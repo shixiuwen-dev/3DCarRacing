@@ -1,0 +1,149 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategy Games | WorkMoyu Games</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "gaming-primary": "#007AFF",
+                        "gaming-secondary": "#ff3b30",
+                        "gaming-dark": "#1a1a1a"
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+</head>
+<body class="bg-gaming-dark min-h-screen text-white">
+    <header class="bg-black/50 backdrop-blur-md sticky top-0 z-50 border-b border-white/10">
+        <div class="container mx-auto px-4 py-4">
+            <nav class="flex items-center justify-between">
+                <a href="/" class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-gaming-primary to-gaming-secondary bg-clip-text text-transparent">WorkMoyu Games</a>
+                <div class="hidden md:flex space-x-6">
+                    <a href="/" class="hover:text-gaming-primary transition">Home</a>
+                    <a href="/#new-games" class="hover:text-gaming-primary transition">New Games</a>
+                    <a href="/#popular" class="hover:text-gaming-primary transition">Popular</a>
+                    <a href="/#categories" class="hover:text-gaming-primary transition">Categories</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <section class="relative rounded-2xl overflow-hidden mb-12 bg-gaming-primary/10">
+            <div class="py-12 px-8">
+                <h1 class="text-4xl md:text-5xl font-bold mb-4">Strategy Games</h1>
+                <p class="text-xl text-gray-300 max-w-2xl">Test your tactical skills and strategic thinking with our collection of engaging strategy games. Build empires, command armies, and outsmart your opponents!</p>
+            </div>
+        </section>
+
+        <section class="mb-12">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Empire Builder -->
+                <a href="/games/empire-builder.html" class="bg-black/30 rounded-xl overflow-hidden group">
+                    <div class="aspect-video relative overflow-hidden">
+                        <img src="https://images.crazygames.com/games/age-of-war/cover-1583232391642.png?auto=format,compress&q=75&cs=strip&ch=DPR&w=1200&h=630&fit=crop" 
+                             alt="Empire Builder" 
+                             class="w-full h-full object-cover transform group-hover:scale-110 transition duration-300">
+                    </div>
+                    <div class="p-4">
+                        <h3 class="text-lg font-bold">Empire Builder</h3>
+                        <p class="text-sm text-gray-300 mt-1">Build and manage your empire!</p>
+                        <div class="flex items-center mt-2">
+                            <div class="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                </svg>
+                                <span class="ml-1 text-sm">4.8</span>
+                            </div>
+                            <span class="mx-2 text-gray-600">•</span>
+                            <span class="text-sm text-gray-400">52K+ plays</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Tower Defense Master -->
+                <a href="/games/tower-defense.html" class="bg-black/30 rounded-xl overflow-hidden group">
+                    <div class="aspect-video relative overflow-hidden">
+                        <img src="https://images.crazygames.com/games/tower-defense-king/cover-1583232391642.png?auto=format,compress&q=75&cs=strip&ch=DPR&w=1200&h=630&fit=crop" 
+                             alt="Tower Defense Master" 
+                             class="w-full h-full object-cover transform group-hover:scale-110 transition duration-300">
+                    </div>
+                    <div class="p-4">
+                        <h3 class="text-lg font-bold">Tower Defense Master</h3>
+                        <p class="text-sm text-gray-300 mt-1">Defend your base at all costs!</p>
+                        <div class="flex items-center mt-2">
+                            <div class="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                </svg>
+                                <span class="ml-1 text-sm">4.7</span>
+                            </div>
+                            <span class="mx-2 text-gray-600">•</span>
+                            <span class="text-sm text-gray-400">48K+ plays</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Chess Master -->
+                <a href="/games/chess-master.html" class="bg-black/30 rounded-xl overflow-hidden group">
+                    <div class="aspect-video relative overflow-hidden">
+                        <img src="https://images.crazygames.com/games/master-chess/cover-1583232391642.png?auto=format,compress&q=75&cs=strip&ch=DPR&w=1200&h=630&fit=crop" 
+                             alt="Chess Master" 
+                             class="w-full h-full object-cover transform group-hover:scale-110 transition duration-300">
+                    </div>
+                    <div class="p-4">
+                        <h3 class="text-lg font-bold">Chess Master</h3>
+                        <p class="text-sm text-gray-300 mt-1">Challenge your mind in chess!</p>
+                        <div class="flex items-center mt-2">
+                            <div class="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                </svg>
+                                <span class="ml-1 text-sm">4.9</span>
+                            </div>
+                            <span class="mx-2 text-gray-600">•</span>
+                            <span class="text-sm text-gray-400">65K+ plays</span>
+                        </div>
+                    </div>
+                </a>
+
+                <!-- City Builder -->
+                <a href="/games/city-builder.html" class="bg-black/30 rounded-xl overflow-hidden group">
+                    <div class="aspect-video relative overflow-hidden">
+                        <img src="https://images.crazygames.com/games/city-builder-3d/cover-1583232391642.png?auto=format,compress&q=75&cs=strip&ch=DPR&w=1200&h=630&fit=crop" 
+                             alt="City Builder" 
+                             class="w-full h-full object-cover transform group-hover:scale-110 transition duration-300">
+                    </div>
+                    <div class="p-4">
+                        <h3 class="text-lg font-bold">City Builder</h3>
+                        <p class="text-sm text-gray-300 mt-1">Create your dream city!</p>
+                        <div class="flex items-center mt-2">
+                            <div class="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                </svg>
+                                <span class="ml-1 text-sm">4.6</span>
+                            </div>
+                            <span class="mx-2 text-gray-600">•</span>
+                            <span class="text-sm text-gray-400">44K+ plays</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-black/50 backdrop-blur-md border-t border-white/10 py-8">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-400">&copy; 2024 WorkMoyu Games. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
