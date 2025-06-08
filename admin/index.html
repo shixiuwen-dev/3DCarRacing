@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WorkMoyu Games Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        "gaming-primary": "#007AFF",
+                        "gaming-secondary": "#ff3b30",
+                        "gaming-dark": "#1a1a1a"
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gaming-dark min-h-screen text-white">
+    <header class="bg-black/50 backdrop-blur-md sticky top-0 z-50 border-b border-white/10">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <h1 class="text-2xl font-bold">游戏管理后台</h1>
+                <button id="addGameBtn" class="bg-gaming-primary px-4 py-2 rounded-lg hover:bg-gaming-primary/80 transition">
+                    添加游戏
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- 游戏列表 -->
+        <div id="gamesList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- 游戏卡片将通过 JavaScript 动态添加 -->
+        </div>
+
+        <!-- 添加/编辑游戏的模态框 -->
+        <div id="gameModal" class="fixed inset-0 bg-black/50 hidden">
+            <div class="bg-gaming-dark p-6 rounded-lg max-w-lg mx-auto mt-20">
+                <h2 id="modalTitle" class="text-xl font-bold mb-4">添加游戏</h2>
+                <form id="gameForm" class="space-y-4">
+                    <div>
+                        <label class="block mb-1">游戏标题</label>
+                        <input type="text" name="title" class="w-full px-3 py-2 rounded bg-black/30 border border-white/10">
+                    </div>
+                    <div>
+                        <label class="block mb-1">游戏描述</label>
+                        <textarea name="description" class="w-full px-3 py-2 rounded bg-black/30 border border-white/10"></textarea>
+                    </div>
+                    <div>
+                        <label class="block mb-1">游戏分类</label>
+                        <select name="category" class="w-full px-3 py-2 rounded bg-black/30 border border-white/10">
+                            <option value="racing">Racing</option>
+                            <option value="action">Action</option>
+                            <option value="strategy">Strategy</option>
+                            <option value="arcade">Arcade</option>
+                            <option value="sports">Sports</option>
+                            <option value="puzzle">Puzzle</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block mb-1">游戏链接</label>
+                        <input type="url" name="url" class="w-full px-3 py-2 rounded bg-black/30 border border-white/10">
+                    </div>
+                    <div>
+                        <label class="block mb-1">游戏图片</label>
+                        <input type="file" name="image" accept="image/*" class="w-full px-3 py-2 rounded bg-black/30 border border-white/10">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" name="featured" id="featured">
+                        <label for="featured">设为推荐</label>
+                    </div>
+                    <div class="flex justify-end gap-4 mt-6">
+                        <button type="button" id="cancelBtn" class="px-4 py-2 rounded bg-gray-600 hover:bg-gray-500 transition">取消</button>
+                        <button type="submit" class="px-4 py-2 rounded bg-gaming-primary hover:bg-gaming-primary/80 transition">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script type="module" src="/scripts/admin.js"></script>
+</body>
+</html> 

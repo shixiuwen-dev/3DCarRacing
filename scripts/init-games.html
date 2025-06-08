@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Initialize Games Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .error { color: red; }
+        .success { color: green; }
+        .warning { color: orange; }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAPsGrrNzqw7l0ld5SiVVSvuI2WD7qCcko",
+            authDomain: "workmoyu-games.firebaseapp.com",
+            projectId: "workmoyu-games",
+            storageBucket: "workmoyu-games.firebasestorage.app",
+            messagingSenderId: "576763889820",
+            appId: "1:576763889820:web:d0ff6040323a0548198559",
+            measurementId: "G-CZ1CZ9C32Q"
+        };
+
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // 测试数据
+        const testGames = [
+            {
+                title: "3D Racing Challenge",
+                description: "Experience high-speed racing action with stunning graphics and realistic physics!",
+                category: "racing",
+                url: "/games/racing.html",
+                featured: true,
+                views: 0,
+                likes: 0,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            },
+            {
+                title: "Puzzle Master",
+                description: "Challenge your mind with our collection of brain-teasing puzzles!",
+                category: "puzzle",
+                url: "/games/puzzle.html",
+                featured: false,
+                views: 0,
+                likes: 0,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            },
+            {
+                title: "Space Shooter",
+                description: "Defend the galaxy in this action-packed space adventure!",
+                category: "action",
+                url: "/games/space-shooter.html",
+                featured: true,
+                views: 0,
+                likes: 0,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            },
+            {
+                title: "Soccer Star",
+                description: "Lead your team to victory in this exciting soccer simulation!",
+                category: "sports",
+                url: "/games/soccer.html",
+                featured: false,
+                views: 0,
+                likes: 0,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            },
+            {
+                title: "Strategy Commander",
+                description: "Build your empire and conquer the world in this epic strategy game!",
+                category: "strategy",
+                url: "/games/strategy.html",
+                featured: true,
+                views: 0,
+                likes: 0,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            }
+        ];
+
+        // 添加日志到页面
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const p = document.createElement('p');
+            p.textContent = message;
+            p.className = type;
+            results.appendChild(p);
+        }
+
+        // 检查数据库权限
+        async function checkPermissions() {
+            try {
+                // 尝试读取集合
+                const gamesCol = collection(db, 'games');
+                await getDocs(gamesCol);
+                log('✅ 数据库读取权限正常', 'success');
+                
+                // 尝试写入测试文档
+                const testDoc = await addDoc(gamesCol, {
+                    test: true,
+                    timestamp: new Date()
+                });
+                log('✅ 数据库写入权限正常', 'success');
+                
+                // 删除测试文档
+                await deleteDoc(testDoc);
+                return true;
+            } catch (error) {
+                log(`❌ 权限检查失败: ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        // 清除现有数据
+        async function clearExistingData() {
+            try {
+                const gamesCol = collection(db, 'games');
+                const snapshot = await getDocs(gamesCol);
+                const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+                await Promise.all(deletePromises);
+                log(`🗑️ 已清除 ${snapshot.docs.length} 条现有数据`, 'warning');
+            } catch (error) {
+                log(`❌ 清除数据失败: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // 添加测试数据到 Firestore
+        async function initializeTestData() {
+            const results = document.getElementById('results');
+            results.innerHTML = ''; // 清除之前的日志
+            
+            try {
+                // 检查权限
+                const hasPermission = await checkPermissions();
+                if (!hasPermission) {
+                    log('❌ 请先在 Firebase Console 中设置适当的安全规则', 'error');
+                    return;
+                }
+
+                // 清除现有数据
+                await clearExistingData();
+
+                // 添加新数据
+                const gamesCol = collection(db, 'games');
+                for (const game of testGames) {
+                    const docRef = await addDoc(gamesCol, game);
+                    log(`✅ 添加游戏: ${game.title}`, 'success');
+                }
+                
+                log('🎉 所有测试数据初始化完成！', 'success');
+            } catch (error) {
+                log(`❌ 错误: ${error.message}`, 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        // 添加按钮点击事件
+        window.addEventListener('DOMContentLoaded', () => {
+            const initButton = document.getElementById('initButton');
+            initButton.addEventListener('click', initializeTestData);
+        });
+    </script>
+</head>
+<body>
+    <h1>Initialize Games Data</h1>
+    <p>这个工具将会：</p>
+    <ol>
+        <li>检查数据库权限</li>
+        <li>清除现有游戏数据</li>
+        <li>添加新的测试游戏数据</li>
+    </ol>
+    <button id="initButton">Initialize Test Data</button>
+    <div id="results"></div>
+</body>
+</html> 

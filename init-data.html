@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initialize Game Data</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .status-message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .success {
+            background-color: #34C759;
+            color: white;
+        }
+        .error {
+            background-color: #FF3B30;
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full mx-4">
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <h1 class="text-2xl font-bold mb-4">Initializing Game Data</h1>
+            <div id="status" class="text-gray-600">
+                <p>Please wait while we initialize the game data...</p>
+                <div class="mt-4 space-y-2">
+                    <div id="clearStatus" class="flex items-center">
+                        <div class="w-4 h-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin mr-2"></div>
+                        <span>Clearing existing data...</span>
+                    </div>
+                    <div id="addStatus" class="flex items-center">
+                        <div class="w-4 h-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin mr-2"></div>
+                        <span>Adding new games...</span>
+                    </div>
+                </div>
+            </div>
+            <div id="result" class="mt-6 hidden">
+                <!-- Results will be shown here -->
+            </div>
+            <div class="mt-6">
+                <a href="/" class="text-blue-500 hover:text-blue-700">Return to Homepage</a>
+            </div>
+            <div id="debug" class="mt-6 text-xs text-gray-500">
+                <!-- Debug information will be shown here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Initialization Script -->
+    <script type="module" src="scripts/init-data.js"></script>
+</body>
+</html> 
