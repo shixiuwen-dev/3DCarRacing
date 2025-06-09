@@ -3,43 +3,53 @@ import { db } from './firebase-init.js';
 
 export function initSearch() {
     const searchInput = document.getElementById('search-input');
-    let debounceTimer;
 
-    searchInput.addEventListener('input', (e) => {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
+    // 处理回车键搜索
+    searchInput.addEventListener('keypress', async (e) => {
+        if (e.key === 'Enter') {
             const searchTerm = e.target.value.trim().toLowerCase();
-            if (searchTerm.length >= 2) {
+            if (searchTerm === '') {
+                // 如果搜索框为空，显示所有游戏
+                const gamesQuery = query(collection(db, 'games'));
+                const snapshot = await getDocs(gamesQuery);
+                const allGames = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                displaySearchResults(allGames, true);
+            } else {
                 performSearch(searchTerm);
             }
-        }, 300);
+        }
     });
+
+    // 清除之前的实时搜索监听器
+    searchInput.removeEventListener('input', () => {});
 }
 
 async function performSearch(searchTerm) {
     try {
-        const gamesQuery = query(
-            collection(db, 'games'),
-            where('searchTerms', 'array-contains', searchTerm)
+        // 获取所有游戏然后在客户端进行模糊搜索
+        const gamesQuery = query(collection(db, 'games'));
+        const snapshot = await getDocs(gamesQuery);
+        const allGames = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        // 只在游戏标题中进行模糊搜索
+        const results = allGames.filter(game => 
+            game.title.toLowerCase().includes(searchTerm.toLowerCase())
         );
         
-        const snapshot = await getDocs(gamesQuery);
-        const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
-        displaySearchResults(results);
+        displaySearchResults(results, false);
     } catch (error) {
         console.error('Search error:', error);
     }
 }
 
-function displaySearchResults(results) {
+function displaySearchResults(results, isShowingAll = false) {
     const mainContent = document.getElementById('main-content');
     
     if (results.length === 0) {
         mainContent.innerHTML = `
             <div class="text-center py-12">
                 <h2 class="text-2xl font-bold mb-4">No games found</h2>
-                <p class="text-gray-400">Try different search terms</p>
+                <p class="text-gray-400">Try different search terms or press Enter with empty search to show all games</p>
             </div>
         `;
         return;
@@ -47,7 +57,7 @@ function displaySearchResults(results) {
     
     mainContent.innerHTML = `
         <section class="mb-12">
-            <h2 class="text-2xl font-bold mb-6">Search Results</h2>
+            <h2 class="text-2xl font-bold mb-6">${isShowingAll ? 'All Games' : 'Search Results'}</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 ${results.map(game => createGameCard(game)).join('')}
             </div>
