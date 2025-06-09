@@ -38,7 +38,7 @@ function createGameCard(game) {
                 <p class="text-sm text-gray-300 mt-1">${game.description}</p>
                 <div class="flex items-center justify-between mt-4">
                     <span class="text-sm text-gray-400">${formatPlays(game.plays)} plays</span>
-                    <a href="${game.url}" class="bg-gaming-primary hover:bg-gaming-primary/80 px-4 py-2 rounded-lg transition">Play</a>
+                    <a href="/games/${game.slug}" data-route class="bg-gaming-primary hover:bg-gaming-primary/80 px-4 py-2 rounded-lg transition">Play</a>
                 </div>
             </div>
         </div>

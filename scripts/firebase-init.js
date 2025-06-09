@@ -2,16 +2,22 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 const firebaseConfig = {
-    apiKey: "your-api-key",
-    authDomain: "your-auth-domain",
-    projectId: "your-project-id",
-    storageBucket: "your-storage-bucket",
-    messagingSenderId: "your-messaging-sender-id",
-    appId: "your-app-id"
+    apiKey: "AIzaSyDQJZXPgYrXpbKBBZHKZhc7XDWlnqR7iAo",
+    authDomain: "workmoyu-games.firebaseapp.com",
+    projectId: "workmoyu-games",
+    storageBucket: "workmoyu-games.appspot.com",
+    messagingSenderId: "1082880009453",
+    appId: "1:1082880009453:web:c2a5c5f7c2f2d2b3b3b3b3",
+    measurementId: "G-WHGEE36CNX"
 };
 
 // 初始化 Firebase
+console.log('Initializing Firebase...');
 const app = initializeApp(firebaseConfig);
 
 // 获取 Firestore 实例
-export const db = getFirestore(app); 
+console.log('Getting Firestore instance...');
+const db = getFirestore(app);
+console.log('Firebase initialization complete');
+
+export { db }; 
