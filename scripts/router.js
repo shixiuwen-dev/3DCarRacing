@@ -343,19 +343,19 @@ async function showGamePage(gameSlug) {
                         <h2 class="text-2xl font-bold mb-6">Similar Games</h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             ${similarGames.map(game => `
-                                <div class="bg-black/30 rounded-xl overflow-hidden group">
-                                    <div class="aspect-video relative overflow-hidden">
+                                <div class="game-card rounded-xl overflow-hidden group h-full flex flex-col">
+                                    <div class="aspect-video relative overflow-hidden flex-shrink-0">
                                         <img src="${game.thumbnail}" 
                                              alt="${game.title}" 
                                              class="w-full h-full object-cover transform group-hover:scale-110 transition duration-300">
                                     </div>
-                                    <div class="p-4">
+                                    <div class="p-4 flex flex-col flex-grow">
                                         <div class="flex items-center justify-between mb-2">
-                                            <h3 class="text-lg font-bold">${game.title}</h3>
-                                            <span class="px-2 py-1 bg-gaming-primary/20 rounded text-sm">${game.category}</span>
+                                            <h3 class="text-lg font-bold line-clamp-1">${game.title}</h3>
+                                            <span class="px-2 py-1 bg-gaming-primary/20 rounded text-sm flex-shrink-0 ml-2">${game.category}</span>
                                         </div>
-                                        <p class="text-sm text-gray-300 mt-1">${game.description}</p>
-                                        <div class="flex items-center justify-between mt-4">
+                                        <p class="text-sm text-gray-300 mt-1 line-clamp-2">${game.description}</p>
+                                        <div class="flex items-center justify-between mt-auto pt-4">
                                             <span class="text-sm text-gray-400">${game.plays || 0} plays</span>
                                             <a href="/games/${game.slug}" data-route class="bg-gaming-primary hover:bg-gaming-primary/80 px-4 py-2 rounded-lg transition">Play</a>
                                         </div>
@@ -407,19 +407,19 @@ function formatPlays(plays) {
 // 创建游戏卡片
 function createGameCard(game) {
     return `
-        <div class="bg-black/30 rounded-xl overflow-hidden group">
-            <div class="aspect-video relative overflow-hidden">
+        <div class="game-card rounded-xl overflow-hidden group h-full flex flex-col">
+            <div class="aspect-video relative overflow-hidden flex-shrink-0">
                 <img src="${game.thumbnail}" 
                      alt="${game.title}" 
                      class="w-full h-full object-cover transform group-hover:scale-110 transition duration-300">
             </div>
-            <div class="p-4">
+            <div class="p-4 flex flex-col flex-grow">
                 <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-lg font-bold">${game.title}</h3>
-                    <span class="px-2 py-1 bg-gaming-primary/20 rounded text-sm">${game.category}</span>
+                    <h3 class="text-lg font-bold line-clamp-1">${game.title}</h3>
+                    <span class="px-2 py-1 bg-gaming-primary/20 rounded text-sm flex-shrink-0 ml-2">${game.category}</span>
                 </div>
-                <p class="text-sm text-gray-300 mt-1">${game.description}</p>
-                <div class="flex items-center justify-between mt-4">
+                <p class="text-sm text-gray-300 mt-1 line-clamp-2">${game.description}</p>
+                <div class="flex items-center justify-between mt-auto pt-4">
                     <span class="text-sm text-gray-400">${formatPlays(game.plays)} plays</span>
                     <a href="/games/${game.slug}" data-route class="bg-gaming-primary hover:bg-gaming-primary/80 px-4 py-2 rounded-lg transition">Play</a>
                 </div>
