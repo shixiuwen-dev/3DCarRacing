@@ -26,6 +26,20 @@ let categoryPaginationState = {
 };
 
 // 初始化路由
+// 平滑滚动到顶部的函数
+function smoothScrollToTop() {
+    // 如果支持smooth behavior，使用平滑滚动
+    if ('scrollBehavior' in document.documentElement.style) {
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    } else {
+        // 降级到普通滚动
+        window.scrollTo(0, 0);
+    }
+}
+
 export function initRouter() {
     window.addEventListener('popstate', handleRoute);
     document.addEventListener('click', handleClick);
@@ -46,6 +60,8 @@ function handleClick(e) {
         }
         
         // 对于其他路由，使用客户端路由
+        // 立即滚动到顶部，提供更好的用户体验
+        smoothScrollToTop();
         history.pushState(null, '', url);
         handleRoute();
     }
@@ -56,6 +72,9 @@ async function handleRoute() {
     const path = window.location.pathname;
     console.log('🛣️ Current path:', path);
     console.log('🔄 handleRoute called');
+    
+    // 滚动到页面顶部 - 修复从首页滚动后进入游戏详情页的问题
+    smoothScrollToTop();
     
     // 确保mainContent存在
     const mainContentEl = document.getElementById('main-content');
@@ -933,6 +952,12 @@ async function showGamePage(gameSlug) {
                 ` : ''}
             </div>
         `;
+        
+        // 确保页面滚动到顶部，让用户能看到游戏区域
+        setTimeout(() => {
+            smoothScrollToTop();
+        }, 100);
+        
     } catch (error) {
         console.error('Error loading game:', error);
         showErrorPage(`Error loading game: ${error.message}`);
