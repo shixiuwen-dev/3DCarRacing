@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Check</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #0F1923; color: white; }
+        .category { margin: 20px 0; padding: 15px; border: 1px solid #333; border-radius: 8px; }
+        .game { margin: 5px 0; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; }
+        button { padding: 10px 20px; background: #FF4655; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #e03e4a; }
+    </style>
+</head>
+<body>
+    <h1>Database Games Check</h1>
+    <button onclick="checkDatabase()">Check Database</button>
+    <div id="results"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { firebaseConfig } from './scripts/firebase-init.js';
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.checkDatabase = async function() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Loading...</p>';
+
+            try {
+                const gamesRef = collection(db, 'games');
+                const gamesQuery = query(gamesRef, orderBy('createdAt', 'desc'));
+                const snapshot = await getDocs(gamesQuery);
+                
+                const games = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                console.log('All games:', games);
+
+                // 按分类分组
+                const categories = {};
+                games.forEach(game => {
+                    const category = game.category || 'undefined';
+                    if (!categories[category]) {
+                        categories[category] = [];
+                    }
+                    categories[category].push(game);
+                });
+
+                let html = `<h2>Total Games: ${games.length}</h2>`;
+                
+                Object.keys(categories).sort().forEach(category => {
+                    const categoryGames = categories[category];
+                    html += `
+                        <div class="category">
+                            <h3>${category} (${categoryGames.length} games)</h3>
+                            ${categoryGames.map(game => `
+                                <div class="game">
+                                    <strong>${game.title}</strong> - 
+                                    Category: ${game.category || 'undefined'} - 
+                                    Plays: ${game.plays || 0}
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                });
+
+                resultsDiv.innerHTML = html;
+            } catch (error) {
+                console.error('Error:', error);
+                resultsDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        };
+    </script>
+</body>
+</html> 

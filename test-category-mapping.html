@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Category Mapping</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #0F1923; color: white; }
+        .test-case { margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .result { font-weight: bold; color: #4CAF50; }
+        button { padding: 10px 20px; background: #FF4655; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 10px 0; }
+        button:hover { background: #e03e4a; }
+        input { padding: 8px; margin: 5px; background: #333; color: white; border: 1px solid #555; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Category Mapping Test</h1>
+    
+    <div>
+        <h2>Test Predefined Categories</h2>
+        <button onclick="testPredefinedCategories()">Test All Predefined</button>
+        <div id="predefined-results"></div>
+    </div>
+    
+    <div>
+        <h2>Test Custom Category</h2>
+        <input type="text" id="custom-category" placeholder="Enter category to test" />
+        <button onclick="testCustomCategory()">Test Custom</button>
+        <div id="custom-results"></div>
+    </div>
+
+    <script>
+        // 复制分类映射函数
+        function mapToExistingCategory(rawCategory) {
+            if (!rawCategory) return 'other';
+            
+            const normalizedCategory = rawCategory.toLowerCase().trim();
+            
+            // 定义分类映射规则
+            const categoryMappings = {
+                // Action 动作类
+                action: ['action', 'fighting', 'shooting', 'beat em up', 'platform', 'platformer'],
+                
+                // Racing 竞速类
+                racing: ['racing', 'driving', 'car', 'motorcycle', 'bike', 'truck', 'drift'],
+                
+                // Strategy 策略类
+                strategy: ['strategy', 'puzzle', 'tower defense', 'real time strategy', 'rts', 'turn based', 'chess', 'checkers'],
+                
+                // Arcade 街机类
+                arcade: ['arcade', 'casual', 'classic', 'retro', 'skill', 'sports', 'basketball', 'football', 'soccer']
+            };
+            
+            // 遍历映射规则
+            for (const [targetCategory, keywords] of Object.entries(categoryMappings)) {
+                for (const keyword of keywords) {
+                    if (normalizedCategory.includes(keyword)) {
+                        console.log(`分类映射: "${rawCategory}" -> "${targetCategory}" (匹配关键词: "${keyword}")`);
+                        return targetCategory;
+                    }
+                }
+            }
+            
+            // 如果没有匹配到任何已有分类，返回 'other'
+            console.log(`分类映射: "${rawCategory}" -> "other" (未匹配任何已有分类)`);
+            return 'other';
+        }
+
+        function testPredefinedCategories() {
+            const testCases = [
+                // Action 测试
+                'Action',
+                'Fighting',
+                'Shooting',
+                'Beat Em Up',
+                'Platform',
+                'Platformer',
+                
+                // Racing 测试
+                'Racing',
+                'Driving',
+                'Car',
+                'Motorcycle',
+                'Bike',
+                'Truck',
+                'Drift',
+                
+                // Strategy 测试
+                'Strategy',
+                'Puzzle',
+                'Tower Defense',
+                'Real Time Strategy',
+                'RTS',
+                'Turn Based',
+                'Chess',
+                'Checkers',
+                
+                // Arcade 测试
+                'Arcade',
+                'Casual',
+                'Classic',
+                'Retro',
+                'Skill',
+                'Sports',
+                'Basketball',
+                'Football',
+                'Soccer',
+                
+                // Other 测试
+                'Adventure',
+                'RPG',
+                'Simulation',
+                'Unknown Category',
+                '',
+                null
+            ];
+
+            let html = '';
+            testCases.forEach(testCase => {
+                const result = mapToExistingCategory(testCase);
+                html += `
+                    <div class="test-case">
+                        Input: "${testCase || 'null/empty'}" → 
+                        <span class="result">${result}</span>
+                    </div>
+                `;
+            });
+
+            document.getElementById('predefined-results').innerHTML = html;
+        }
+
+        function testCustomCategory() {
+            const input = document.getElementById('custom-category').value;
+            const result = mapToExistingCategory(input);
+            
+            document.getElementById('custom-results').innerHTML = `
+                <div class="test-case">
+                    Input: "${input}" → 
+                    <span class="result">${result}</span>
+                </div>
+            `;
+        }
+
+        // 自动运行预定义测试
+        window.onload = function() {
+            testPredefinedCategories();
+        };
+    </script>
+</body>
+</html> 

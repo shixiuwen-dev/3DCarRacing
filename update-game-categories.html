@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Game Categories</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #0F1923; color: white; }
+        .game { margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 4px; }
+        .updated { background: rgba(76, 175, 80, 0.2); }
+        .unchanged { background: rgba(255, 193, 7, 0.2); }
+        button { padding: 10px 20px; background: #FF4655; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 10px 5px; }
+        button:hover { background: #e03e4a; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .progress { margin: 20px 0; }
+        .progress-bar { width: 100%; height: 20px; background: #333; border-radius: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #4CAF50; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+    <h1>Update Game Categories</h1>
+    
+    <div>
+        <button id="checkButton" onclick="checkCategories()">Check Current Categories</button>
+        <button id="updateButton" onclick="updateCategories()" disabled>Update Categories</button>
+        <button id="previewButton" onclick="previewUpdates()" disabled>Preview Updates</button>
+    </div>
+    
+    <div class="progress" id="progressContainer" style="display: none;">
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+        </div>
+        <div id="progressText">0%</div>
+    </div>
+    
+    <div id="results"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, collection, getDocs, doc, updateDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { firebaseConfig } from './scripts/firebase-init.js';
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let allGames = [];
+        let gamesToUpdate = [];
+
+        // 分类映射函数
+        function mapToExistingCategory(rawCategory) {
+            if (!rawCategory) return 'other';
+            
+            const normalizedCategory = rawCategory.toLowerCase().trim();
+            
+            // 定义分类映射规则
+            const categoryMappings = {
+                // Action 动作类
+                action: ['action', 'fighting', 'shooting', 'beat em up', 'platform', 'platformer'],
+                
+                // Racing 竞速类
+                racing: ['racing', 'driving', 'car', 'motorcycle', 'bike', 'truck', 'drift'],
+                
+                // Strategy 策略类
+                strategy: ['strategy', 'puzzle', 'tower defense', 'real time strategy', 'rts', 'turn based', 'chess', 'checkers'],
+                
+                // Arcade 街机类
+                arcade: ['arcade', 'casual', 'classic', 'retro', 'skill', 'sports', 'basketball', 'football', 'soccer']
+            };
+            
+            // 遍历映射规则
+            for (const [targetCategory, keywords] of Object.entries(categoryMappings)) {
+                for (const keyword of keywords) {
+                    if (normalizedCategory.includes(keyword)) {
+                        console.log(`分类映射: "${rawCategory}" -> "${targetCategory}" (匹配关键词: "${keyword}")`);
+                        return targetCategory;
+                    }
+                }
+            }
+            
+            // 如果没有匹配到任何已有分类，返回 'other'
+            console.log(`分类映射: "${rawCategory}" -> "other" (未匹配任何已有分类)`);
+            return 'other';
+        }
+
+        window.checkCategories = async function() {
+            const resultsDiv = document.getElementById('results');
+            const checkButton = document.getElementById('checkButton');
+            
+            try {
+                checkButton.disabled = true;
+                resultsDiv.innerHTML = '<p>Loading games...</p>';
+
+                const gamesRef = collection(db, 'games');
+                const gamesQuery = query(gamesRef, orderBy('createdAt', 'desc'));
+                const snapshot = await getDocs(gamesQuery);
+                
+                allGames = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    docRef: doc.ref,
+                    ...doc.data()
+                }));
+
+                console.log('All games loaded:', allGames.length);
+
+                // 分析需要更新的游戏
+                gamesToUpdate = [];
+                const categoryStats = {};
+
+                allGames.forEach(game => {
+                    const currentCategory = game.category || '';
+                    const newCategory = mapToExistingCategory(currentCategory);
+                    
+                    // 统计分类
+                    if (!categoryStats[currentCategory || 'undefined']) {
+                        categoryStats[currentCategory || 'undefined'] = 0;
+                    }
+                    categoryStats[currentCategory || 'undefined']++;
+
+                    // 检查是否需要更新
+                    if (currentCategory !== newCategory) {
+                        gamesToUpdate.push({
+                            ...game,
+                            oldCategory: currentCategory,
+                            newCategory: newCategory
+                        });
+                    }
+                });
+
+                // 显示结果
+                let html = `
+                    <h2>Current Category Statistics</h2>
+                    <div style="margin-bottom: 20px;">
+                        <strong>Total Games: ${allGames.length}</strong><br>
+                        <strong>Games to Update: ${gamesToUpdate.length}</strong>
+                    </div>
+                `;
+
+                // 显示当前分类统计
+                html += '<h3>Current Categories:</h3>';
+                Object.keys(categoryStats).sort().forEach(category => {
+                    html += `<div>${category || 'undefined'}: ${categoryStats[category]} games</div>`;
+                });
+
+                // 显示需要更新的游戏
+                if (gamesToUpdate.length > 0) {
+                    html += '<h3>Games to Update:</h3>';
+                    gamesToUpdate.forEach(game => {
+                        html += `
+                            <div class="game">
+                                <strong>${game.title}</strong><br>
+                                Current: "${game.oldCategory || 'undefined'}" → New: "${game.newCategory}"
+                            </div>
+                        `;
+                    });
+
+                    document.getElementById('updateButton').disabled = false;
+                    document.getElementById('previewButton').disabled = false;
+                } else {
+                    html += '<p style="color: green;">All games already have correct categories!</p>';
+                }
+
+                resultsDiv.innerHTML = html;
+
+            } catch (error) {
+                console.error('Error:', error);
+                resultsDiv.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+            } finally {
+                checkButton.disabled = false;
+            }
+        };
+
+        window.previewUpdates = function() {
+            const resultsDiv = document.getElementById('results');
+            
+            let html = `<h2>Preview Updates (${gamesToUpdate.length} games)</h2>`;
+            
+            const newCategoryStats = {};
+            gamesToUpdate.forEach(game => {
+                if (!newCategoryStats[game.newCategory]) {
+                    newCategoryStats[game.newCategory] = 0;
+                }
+                newCategoryStats[game.newCategory]++;
+            });
+
+            html += '<h3>New Category Distribution:</h3>';
+            Object.keys(newCategoryStats).sort().forEach(category => {
+                html += `<div>${category}: +${newCategoryStats[category]} games</div>`;
+            });
+
+            html += '<h3>Games to Update:</h3>';
+            gamesToUpdate.forEach(game => {
+                html += `
+                    <div class="game">
+                        <strong>${game.title}</strong><br>
+                        "${game.oldCategory || 'undefined'}" → "${game.newCategory}"
+                    </div>
+                `;
+            });
+
+            resultsDiv.innerHTML = html;
+        };
+
+        window.updateCategories = async function() {
+            if (gamesToUpdate.length === 0) {
+                alert('No games to update!');
+                return;
+            }
+
+            const updateButton = document.getElementById('updateButton');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const resultsDiv = document.getElementById('results');
+
+            try {
+                updateButton.disabled = true;
+                progressContainer.style.display = 'block';
+                
+                let updated = 0;
+                let failed = 0;
+                const total = gamesToUpdate.length;
+
+                resultsDiv.innerHTML = '<h2>Updating Categories...</h2>';
+
+                for (let i = 0; i < gamesToUpdate.length; i++) {
+                    const game = gamesToUpdate[i];
+                    
+                    try {
+                        await updateDoc(doc(db, 'games', game.id), {
+                            category: game.newCategory
+                        });
+                        
+                        updated++;
+                        console.log(`Updated ${game.title}: ${game.oldCategory} → ${game.newCategory}`);
+                        
+                    } catch (error) {
+                        failed++;
+                        console.error(`Failed to update ${game.title}:`, error);
+                    }
+
+                    // 更新进度
+                    const progress = Math.round(((i + 1) / total) * 100);
+                    progressFill.style.width = `${progress}%`;
+                    progressText.textContent = `${progress}% (${i + 1}/${total})`;
+                }
+
+                // 显示结果
+                resultsDiv.innerHTML = `
+                    <h2>Update Complete!</h2>
+                    <div style="color: green;">✅ Successfully updated: ${updated} games</div>
+                    ${failed > 0 ? `<div style="color: red;">❌ Failed to update: ${failed} games</div>` : ''}
+                    <button onclick="checkCategories()" style="margin-top: 20px;">Refresh Categories</button>
+                `;
+
+            } catch (error) {
+                console.error('Update error:', error);
+                resultsDiv.innerHTML = `<p style="color: red;">Update failed: ${error.message}</p>`;
+            } finally {
+                updateButton.disabled = false;
+                progressContainer.style.display = 'none';
+            }
+        };
+    </script>
+</body>
+</html> 

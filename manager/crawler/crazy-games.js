@@ -65,6 +65,42 @@ async function validateThumbnail(thumbnailUrl) {
     }
 }
 
+// 将原始分类映射到已有分类
+function mapToExistingCategory(rawCategory) {
+    if (!rawCategory) return 'other';
+    
+    const normalizedCategory = rawCategory.toLowerCase().trim();
+    
+    // 定义分类映射规则
+    const categoryMappings = {
+        // Action 动作类
+        action: ['action', 'fighting', 'shooting', 'beat em up', 'platform', 'platformer'],
+        
+        // Racing 竞速类
+        racing: ['racing', 'driving', 'car', 'motorcycle', 'bike', 'truck', 'drift'],
+        
+        // Strategy 策略类
+        strategy: ['strategy', 'puzzle', 'tower defense', 'real time strategy', 'rts', 'turn based', 'chess', 'checkers'],
+        
+        // Arcade 街机类
+        arcade: ['arcade', 'casual', 'classic', 'retro', 'skill', 'sports', 'basketball', 'football', 'soccer']
+    };
+    
+    // 遍历映射规则
+    for (const [targetCategory, keywords] of Object.entries(categoryMappings)) {
+        for (const keyword of keywords) {
+            if (normalizedCategory.includes(keyword)) {
+                console.log(`分类映射: "${rawCategory}" -> "${targetCategory}" (匹配关键词: "${keyword}")`);
+                return targetCategory;
+            }
+        }
+    }
+    
+    // 如果没有匹配到任何已有分类，返回 'other'
+    console.log(`分类映射: "${rawCategory}" -> "other" (未匹配任何已有分类)`);
+    return 'other';
+}
+
 // 获取游戏数据
 async function fetchGameData(url) {
     try {
@@ -116,8 +152,11 @@ async function fetchGameData(url) {
         
         // 获取游戏分类
         const categoryElement = findTableRowByLabel(doc, 'Category');
-        const category = categoryElement ? categoryElement.textContent.trim() : '';
-        console.log('游戏分类:', category);
+        const rawCategory = categoryElement ? categoryElement.textContent.trim() : '';
+        
+        // 分类映射到已有分类
+        const category = mapToExistingCategory(rawCategory);
+        console.log('原始分类:', rawCategory, '-> 映射分类:', category);
         
         // 获取游戏嵌入URL
         const embedUrl = url.replace('game/', 'embed/');
