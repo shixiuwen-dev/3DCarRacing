@@ -1,5 +1,5 @@
 import { collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-import { db } from './firebase-init.js';
+import { db } from '/scripts/firebase-init.js';
 
 export function initSearch() {
     const searchInput = document.getElementById('search-input');

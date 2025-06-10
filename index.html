@@ -101,9 +101,9 @@
     <footer class="bg-black/30 py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col md:flex-row justify-between items-center">
-                <div class="mb-4 md:mb-0">
+                <div class="mb-4 md:mb-0 flex items-center">
                     <img src="/assets/logo.svg" alt="WorkMoyu Games Logo" class="h-8 w-auto">
-                    <p class="mt-2 text-gray-400">Play free online games!</p>
+                    <p class="ml-4 text-gray-400">Play free online games!</p>
                 </div>
                 <div class="flex space-x-6">
                     <a href="/about.html" data-route class="text-gray-400 hover:text-white">About</a>
@@ -120,9 +120,9 @@
 
     <!-- Firebase -->
     <script type="module">
-        import { db } from './scripts/firebase-init.js';
-        import { initRouter } from './scripts/router.js';
-        import { initSearch } from './scripts/search.js';
+        import { db } from '/scripts/firebase-init.js';
+        import { initRouter } from '/scripts/router.js';
+        import { initSearch } from '/scripts/search.js';
         import { doc, updateDoc, increment, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
         // 全局函数：递增游戏播放次数
@@ -140,20 +140,20 @@
             }
         };
 
-        // 等待 Firebase 初始化完成后再初始化其他功能
-        window.addEventListener('DOMContentLoaded', async () => {
+        // 初始化应用程序
+        async function initializeApp() {
             try {
                 console.log('🔥 Starting application initialization...');
-                console.log('✅ DOM Content Loaded');
+                console.log('✅ DOM Ready');
 
-        // 初始化路由
+                // 初始化路由
                 console.log('Initializing router...');
-        initRouter();
-        
-        // 初始化搜索
-                console.log('Initializing search...');
-        initSearch();
+                initRouter();
                 
+                // 初始化搜索
+                console.log('Initializing search...');
+                initSearch();
+                        
                 console.log('Application initialization complete');
             } catch (error) {
                 console.error('Error during application initialization:', error);
@@ -166,7 +166,15 @@
                     </div>
                 `;
             }
-        });
+        }
+
+        // 检查DOM是否已经加载完成，如果是则立即初始化，否则等待
+        if (document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            // DOM已经加载完成，立即初始化
+            initializeApp();
+        }
     </script>
 </body>
 

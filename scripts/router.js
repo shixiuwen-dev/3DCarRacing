@@ -1,7 +1,10 @@
 import { getFirestore, collection, getDocs, query, where, orderBy, limit, startAfter, doc, updateDoc, increment, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-import { db } from './firebase-init.js';
+import { db } from '/scripts/firebase-init.js';
 
-const mainContent = document.getElementById('main-content');
+// 获取主内容容器的函数
+function getMainContent() {
+    return document.getElementById('main-content');
+}
 
 // 路由配置
 const routes = {
@@ -12,6 +15,14 @@ const routes = {
     '/privacy.html': () => loadStaticPage('/privacy.html'),
     '/terms.html': () => loadStaticPage('/terms.html'),
     '/contact.html': () => loadStaticPage('/contact.html')
+};
+
+// 全局变量管理分页状态
+let categoryPaginationState = {
+    currentCategory: null,
+    lastDoc: null,
+    hasMore: true,
+    loading: false
 };
 
 // 初始化路由
@@ -45,43 +56,91 @@ async function handleRoute() {
     const path = window.location.pathname;
     console.log('🛣️ Current path:', path);
     console.log('🔄 handleRoute called');
-    const [base, param] = path.split('/').filter(Boolean);
-    console.log('Route parts:', { base, param });
+    
+    // 确保mainContent存在
+    const mainContentEl = document.getElementById('main-content');
+    if (!mainContentEl) {
+        console.error('❌ Main content element not found!');
+        return;
+    }
     
     // 显示加载状态
-    mainContent.innerHTML = createLoadingTemplate();
+    mainContentEl.innerHTML = createLoadingTemplate();
+    console.log('📋 Loading template displayed');
 
     try {
-        if (!base) {
-            console.log('Showing home page');
+        console.log('🔍 Checking database connection...');
+        if (!db) {
+            console.error('❌ Database not initialized!');
+            showErrorPage('Database connection failed. Please refresh the page.');
+            return;
+        }
+        console.log('✅ Database connection OK');
+        
+        // 直接处理根路径
+        if (path === '/' || path === '/index.html') {
+            console.log('🏠 Showing home page');
             await showHomePage();
-        } else if (base === 'categories') {
-            // 移除.html后缀
-            const category = param ? param.replace('.html', '') : '';
-            console.log('Showing category page:', category);
-            if (category) {
+            console.log('✅ Home page loaded successfully');
+            return;
+        }
+        
+        // 处理分类路径：/categories/action, /categories/racing 等
+        if (path.startsWith('/categories/')) {
+            const category = path.replace('/categories/', '').replace('.html', '');
+            console.log('📂 Showing category page:', category);
+            if (category && ['action', 'racing', 'strategy', 'arcade', 'sport', 'other'].includes(category.toLowerCase())) {
                 await showCategoryPage(category);
+                console.log('✅ Category page loaded successfully');
             } else {
+                console.log('❌ Invalid category:', category);
                 showErrorPage('Category not found');
             }
-        } else if (base === 'games') {
-            // 移除.html后缀
-            const gameSlug = param ? param.replace('.html', '') : '';
-            console.log('Showing game page:', gameSlug);
+            return;
+        }
+        
+        // 处理游戏路径：/games/game-slug
+        if (path.startsWith('/games/')) {
+            const gameSlug = path.replace('/games/', '').replace('.html', '');
+            console.log('🎮 Showing game page:', gameSlug);
             if (gameSlug) {
                 await showGamePage(gameSlug);
+                console.log('✅ Game page loaded successfully');
             } else {
+                console.log('❌ No game slug provided');
                 showErrorPage('Game not found');
             }
-        } else if (path in routes) {
-            // 处理静态页面路由
-            await routes[path]();
-        } else {
-            console.log('Unknown route:', path);
-            showErrorPage('Page not found');
+            return;
         }
+        
+        // 处理静态页面路由
+        if (path in routes) {
+            console.log('📄 Loading static route:', path);
+            await routes[path]();
+            console.log('✅ Static route loaded successfully');
+            return;
+        }
+        
+        // 检查是否是静态文件，如果是则尝试重定向
+        const staticPages = ['/about.html', '/privacy.html', '/terms.html', '/contact.html'];
+        if (staticPages.includes(path)) {
+            try {
+                console.log('📄 Loading static page:', path);
+                await loadStaticPage(path);
+                console.log('✅ Static page loaded successfully');
+                return;
+            } catch (error) {
+                console.error('❌ Error loading static page:', error);
+            }
+        }
+        
+        // 如果都不匹配，显示404
+        console.log('❌ Unknown route:', path);
+        showErrorPage('Page not found');
+        
     } catch (error) {
-        console.error('Route handling error:', error);
+        console.error('❌ Route handling error:', error);
+        console.error('Error stack:', error.stack);
         showErrorPage('An error occurred while loading the page');
     }
 }
@@ -341,6 +400,11 @@ async function showHomePage() {
     try {
         console.log('🚀 Loading home page...');
         console.log('✅ showHomePage function called');
+        const mainContent = getMainContent();
+        if (!mainContent) {
+            console.error('❌ Main content element not found in showHomePage!');
+            return;
+        }
         mainContent.innerHTML = createLoadingTemplate();
 
         // 获取新游戏和热门游戏
@@ -503,7 +567,8 @@ async function getGames(options = {}) {
             return gameData;
         });
         
-        return games;
+        // 返回games数组和snapshot以便获取lastDoc
+        return { games, snapshot };
     } catch (error) {
         console.error('Error getting games:', error);
         console.error('Error details:', error.message);
@@ -514,11 +579,12 @@ async function getGames(options = {}) {
 
 // 获取新游戏
 async function getNewGames() {
-    return getGames({
+    const result = await getGames({
         orderBy: 'createdAt',
         orderDirection: 'desc',
         limit: 4
     });
+    return result.games;
 }
 
 // 获取热门游戏
@@ -526,13 +592,13 @@ async function getPopularGames() {
     try {
         console.log('Getting popular games...');
         // 直接获取播放次数最多的4个游戏
-        const games = await getGames({
+        const result = await getGames({
             orderBy: 'plays',
             orderDirection: 'desc',
             limit: 4
         });
-        console.log('Popular games loaded:', games.length, 'games');
-        return games;
+        console.log('Popular games loaded:', result.games.length, 'games');
+        return result.games;
     } catch (error) {
         console.error('Error getting popular games:', error);
         return [];
@@ -542,11 +608,11 @@ async function getPopularGames() {
 // 获取相似游戏
 async function getSimilarGames(category, excludeId) {
     try {
-        const games = await getGames({
+        const result = await getGames({
             category: category,
             limit: 4
         });
-        return games.filter(game => game.id !== excludeId);
+        return result.games.filter(game => game.id !== excludeId);
     } catch (error) {
         console.error('Error getting similar games:', error);
         return [];
@@ -557,14 +623,14 @@ async function getSimilarGames(category, excludeId) {
 async function getOtherGames() {
     try {
         console.log('Getting other category games...');
-        const games = await getGames({
+        const result = await getGames({
             category: 'other',
             orderBy: 'createdAt',
             orderDirection: 'desc',
             limit: 4
         });
-        console.log('Other games loaded:', games.length, 'games');
-        return games;
+        console.log('Other games loaded:', result.games.length, 'games');
+        return result.games;
     } catch (error) {
         console.error('Error getting other games:', error);
         return [];
@@ -575,14 +641,14 @@ async function getOtherGames() {
 async function getSportGames() {
     try {
         console.log('Getting sport category games...');
-        const games = await getGames({
+        const result = await getGames({
             category: 'sport',
             orderBy: 'createdAt',
             orderDirection: 'desc',
             limit: 4
         });
-        console.log('Sport games loaded:', games.length, 'games');
-        return games;
+        console.log('Sport games loaded:', result.games.length, 'games');
+        return result.games;
     } catch (error) {
         console.error('Error getting sport games:', error);
         return [];
@@ -593,6 +659,11 @@ async function getSportGames() {
 async function showCategoryPage(category) {
     try {
         // 显示加载状态
+        const mainContent = getMainContent();
+        if (!mainContent) {
+            console.error('❌ Main content element not found in showCategoryPage!');
+            return;
+        }
         mainContent.innerHTML = createLoadingTemplate();
         
         console.log('Loading category:', category);
@@ -600,16 +671,39 @@ async function showCategoryPage(category) {
         const normalizedCategory = category.toLowerCase();
         console.log('Normalized category:', normalizedCategory);
         
-        // 使用通用的 getGames 函数获取数据
-        const games = await getGames({
+        // 重置分页状态
+        categoryPaginationState = {
+            currentCategory: normalizedCategory,
+            lastDoc: null,
+            hasMore: true,
+            loading: false
+        };
+        
+        // 使用通用的 getGames 函数获取数据，限制为12个
+        const result = await getGames({
             category: normalizedCategory,
             orderBy: 'createdAt',
-            orderDirection: 'desc'
+            orderDirection: 'desc',
+            limit: 12
         });
         
+        const games = result.games;
         console.log('Games loaded:', games.length);
         
+        // 更新分页状态，使用Firebase文档对象
+        if (result.snapshot.docs.length > 0) {
+            categoryPaginationState.lastDoc = result.snapshot.docs[result.snapshot.docs.length - 1];
+            categoryPaginationState.hasMore = games.length === 12;
+        } else {
+            categoryPaginationState.hasMore = false;
+        }
+        
         if (games.length === 0) {
+            const mainContent = getMainContent();
+            if (!mainContent) {
+                console.error('❌ Main content element not found in showCategoryPage (no games)!');
+                return;
+            }
             mainContent.innerHTML = `
                 <section class="relative rounded-2xl overflow-hidden mb-12 bg-gaming-primary/10 p-8">
                     <h1 class="text-4xl md:text-5xl font-bold mb-4">${category} Games</h1>
@@ -624,20 +718,41 @@ async function showCategoryPage(category) {
             return;
         }
         
-        mainContent.innerHTML = `
+        const mainContent2 = getMainContent();
+        if (!mainContent2) {
+            console.error('❌ Main content element not found in showCategoryPage (with games)!');
+            return;
+        }
+        mainContent2.innerHTML = `
             <section class="relative rounded-2xl overflow-hidden mb-12 bg-gaming-primary/10 p-8">
                 <h1 class="text-4xl md:text-5xl font-bold mb-4">${category} Games</h1>
                 <p class="text-xl text-gray-300 max-w-2xl">Explore our collection of amazing ${category.toLowerCase()} games!</p>
             </section>
             
             <section class="mb-12">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div id="category-games-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     ${games.map(game => createGameCard(game)).join('')}
                 </div>
+                ${categoryPaginationState.hasMore ? `
+                    <div class="text-center mt-8">
+                        <button id="load-more-category-btn" onclick="loadMoreCategoryGames()" class="px-6 py-3 bg-gaming-primary hover:bg-gaming-primary/80 rounded-lg transition">
+                            Load More Games
+                        </button>
+                    </div>
+                ` : ''}
             </section>
         `;
+        
+        // 将loadMoreCategoryGames函数添加到全局作用域
+        window.loadMoreCategoryGames = loadMoreCategoryGames;
+        
     } catch (error) {
         console.error('Error loading category:', error);
+        const mainContent = getMainContent();
+        if (!mainContent) {
+            console.error('❌ Main content element not found in showCategoryPage (error)!');
+            return;
+        }
         mainContent.innerHTML = `
             <section class="relative rounded-2xl overflow-hidden mb-12 bg-gaming-primary/10 p-8">
                 <h1 class="text-4xl md:text-5xl font-bold mb-4">${category} Games</h1>
@@ -655,10 +770,81 @@ async function showCategoryPage(category) {
     }
 }
 
+// 加载更多分类游戏的函数
+async function loadMoreCategoryGames() {
+    if (categoryPaginationState.loading || !categoryPaginationState.hasMore) {
+        return;
+    }
+
+    categoryPaginationState.loading = true;
+    const loadMoreBtn = document.getElementById('load-more-category-btn');
+    if (loadMoreBtn) {
+        loadMoreBtn.innerHTML = '<div class="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white mx-auto"></div>';
+        loadMoreBtn.disabled = true;
+    }
+
+    try {
+        const result = await getGames({
+            category: categoryPaginationState.currentCategory,
+            orderBy: 'createdAt',
+            orderDirection: 'desc',
+            limit: 12,
+            lastDoc: categoryPaginationState.lastDoc
+        });
+
+        const moreGames = result.games;
+        console.log('Loaded more games:', moreGames.length);
+
+        if (moreGames.length > 0) {
+            // 更新分页状态，使用Firebase文档对象
+            categoryPaginationState.lastDoc = result.snapshot.docs[result.snapshot.docs.length - 1];
+            categoryPaginationState.hasMore = moreGames.length === 12;
+
+            // 添加新游戏到网格
+            const gamesGrid = document.getElementById('category-games-grid');
+            if (gamesGrid) {
+                const newGamesHTML = moreGames.map(game => createGameCard(game)).join('');
+                gamesGrid.insertAdjacentHTML('beforeend', newGamesHTML);
+            }
+
+            // 更新或移除"加载更多"按钮
+            if (categoryPaginationState.hasMore) {
+                loadMoreBtn.innerHTML = 'Load More Games';
+                loadMoreBtn.disabled = false;
+            } else {
+                loadMoreBtn.style.display = 'none';
+            }
+        } else {
+            // 没有更多游戏了
+            categoryPaginationState.hasMore = false;
+            if (loadMoreBtn) {
+                loadMoreBtn.style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading more category games:', error);
+        if (loadMoreBtn) {
+            loadMoreBtn.innerHTML = 'Load More Games';
+            loadMoreBtn.disabled = false;
+        }
+    } finally {
+        categoryPaginationState.loading = false;
+    }
+}
+
 // 游戏详情页面内容
 async function showGamePage(gameSlug) {
     try {
         console.log('Loading game:', gameSlug);
+        
+        // 先显示加载模板
+        const mainContent = getMainContent();
+        if (!mainContent) {
+            console.error('❌ Main content element not found in showGamePage!');
+            return;
+        }
+        mainContent.innerHTML = createGameLoadingTemplate();
+        
         const gamesQuery = query(
             collection(db, 'games'),
             where('slug', '==', gameSlug)
@@ -686,7 +872,12 @@ async function showGamePage(gameSlug) {
         const similarGames = await getSimilarGames(game.category, game.id);
         console.log('Similar games:', similarGames);
         
-        mainContent.innerHTML = `
+        const mainContentFinal = getMainContent();
+        if (!mainContentFinal) {
+            console.error('❌ Main content element not found in showGamePage (final)!');
+            return;
+        }
+        mainContentFinal.innerHTML = `
             <div class="max-w-6xl mx-auto">
                 <div class="bg-black/30 rounded-2xl overflow-hidden mb-8">
                     <div class="aspect-[16/9] w-full relative" style="min-height: 600px;">
@@ -736,26 +927,7 @@ async function showGamePage(gameSlug) {
                     <div class="mt-12">
                         <h2 class="text-2xl font-bold mb-6">Similar Games</h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            ${similarGames.map(game => `
-                                <div class="game-card rounded-xl overflow-hidden group h-full flex flex-col">
-                                    <div class="relative overflow-hidden flex-shrink-0" style="height: 200px; min-height: 200px;">
-                                        <img src="${game.thumbnail}" 
-                                             alt="${game.title}" 
-                                             class="w-full h-full object-cover transform group-hover:scale-110 transition duration-300">
-                                    </div>
-                                    <div class="p-4 flex flex-col flex-grow">
-                                        <div class="flex items-center justify-between mb-2">
-                                            <h3 class="text-lg font-bold line-clamp-1">${game.title}</h3>
-                                            <span class="px-2 py-1 bg-gaming-primary/20 rounded text-sm flex-shrink-0 ml-2">${game.category}</span>
-                                        </div>
-                                        <p class="text-sm text-gray-300 mt-1 line-clamp-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${game.description}</p>
-                                                        <div class="flex items-center justify-between mt-auto pt-4">
-                    <span class="text-sm text-gray-400">${game.plays || 0} plays</span>
-                    <a href="/games/${game.slug}" data-route class="bg-gaming-primary hover:bg-gaming-primary/80 px-4 py-2 rounded-lg transition" onclick="incrementPlays('${game.id}')">Play</a>
-                </div>
-                                    </div>
-                                </div>
-                            `).join('')}
+                            ${similarGames.map(game => createGameCard(game)).join('')}
                         </div>
                     </div>
                 ` : ''}
@@ -770,6 +942,11 @@ async function showGamePage(gameSlug) {
 // 错误页面
 function showErrorPage(message) {
     console.error('Showing error page:', message);
+    const mainContent = getMainContent();
+    if (!mainContent) {
+        console.error('❌ Main content element not found in showErrorPage!');
+        return;
+    }
     mainContent.innerHTML = `
         <div class="min-h-[400px] flex items-center justify-center">
             <div class="text-center">
@@ -783,8 +960,98 @@ function showErrorPage(message) {
 // 加载中模板
 function createLoadingTemplate() {
     return `
-        <div class="flex items-center justify-center min-h-[400px]">
-            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gaming-primary"></div>
+        <div class="container mx-auto px-4 py-8">
+            <!-- Hero Section Skeleton -->
+            <div class="relative rounded-2xl overflow-hidden mb-12 bg-black/30 p-8 animate-pulse">
+                <div class="h-12 bg-gray-700 rounded mb-4 w-64"></div>
+                <div class="h-6 bg-gray-700 rounded w-96"></div>
+            </div>
+            
+            <!-- Games Grid Skeleton -->
+            <div class="mb-12">
+                <div class="h-8 bg-gray-700 rounded mb-6 w-48"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    ${Array(8).fill(0).map(() => `
+                        <div class="bg-black/30 rounded-xl overflow-hidden animate-pulse">
+                            <div class="w-full bg-gray-700" style="height: 200px;"></div>
+                            <div class="p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="h-6 bg-gray-700 rounded w-32"></div>
+                                    <div class="h-6 bg-gray-700 rounded w-16"></div>
+                                </div>
+                                <div class="h-4 bg-gray-700 rounded mb-2"></div>
+                                <div class="h-4 bg-gray-700 rounded w-3/4 mb-4"></div>
+                                <div class="flex items-center justify-between">
+                                    <div class="h-4 bg-gray-700 rounded w-16"></div>
+                                    <div class="h-8 bg-gray-700 rounded w-16"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// 游戏详情页面的加载模板
+function createGameLoadingTemplate() {
+    return `
+        <div class="max-w-6xl mx-auto animate-pulse">
+            <!-- Game iframe skeleton -->
+            <div class="bg-black/30 rounded-2xl overflow-hidden mb-8">
+                <div class="aspect-[16/9] w-full bg-gray-700 flex items-center justify-center" style="min-height: 600px;">
+                    <div class="text-center">
+                        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gaming-primary mx-auto mb-4"></div>
+                        <p class="text-gray-400">Loading game...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Game info skeleton -->
+            <div class="bg-black/30 rounded-2xl p-6 mb-8">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="h-8 bg-gray-700 rounded w-64"></div>
+                    <div class="flex items-center space-x-4">
+                        <div class="h-6 bg-gray-700 rounded w-16"></div>
+                        <div class="h-6 bg-gray-700 rounded w-20"></div>
+                    </div>
+                </div>
+                <div class="h-4 bg-gray-700 rounded mb-2"></div>
+                <div class="h-4 bg-gray-700 rounded w-3/4 mb-6"></div>
+                
+                <div class="mt-6">
+                    <div class="h-6 bg-gray-700 rounded w-32 mb-3"></div>
+                    <div class="space-y-2">
+                        <div class="h-4 bg-gray-700 rounded"></div>
+                        <div class="h-4 bg-gray-700 rounded w-5/6"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Similar games skeleton -->
+            <div class="mt-12">
+                <div class="h-8 bg-gray-700 rounded w-48 mb-6"></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    ${Array(4).fill(0).map(() => `
+                        <div class="bg-black/30 rounded-xl overflow-hidden">
+                            <div class="w-full bg-gray-700" style="height: 200px;"></div>
+                            <div class="p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="h-6 bg-gray-700 rounded w-32"></div>
+                                    <div class="h-6 bg-gray-700 rounded w-16"></div>
+                                </div>
+                                <div class="h-4 bg-gray-700 rounded mb-2"></div>
+                                <div class="h-4 bg-gray-700 rounded w-3/4 mb-4"></div>
+                                <div class="flex items-center justify-between">
+                                    <div class="h-4 bg-gray-700 rounded w-16"></div>
+                                    <div class="h-8 bg-gray-700 rounded w-16"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
         </div>
     `;
 }
