@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us - WorkMoyu Games</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #0F1923; 
+            color: white; 
+            padding: 20px; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+        }
+        h1 { color: #FF4655; }
+        h2 { color: #FF4655; }
+        input, textarea, select { 
+            width: 100%; 
+            padding: 10px; 
+            margin: 5px 0; 
+            background: #1a1a1a; 
+            border: 1px solid #374151; 
+            color: white; 
+        }
+        button { 
+            background: #FF4655; 
+            color: white; 
+            padding: 10px 20px; 
+            border: none; 
+            cursor: pointer; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Contact Us</h1>
+        <p>We'd love to hear from you! Whether you have questions, suggestions, or partnership opportunities, feel free to reach out to us.</p>
+        
+        <h2>Contact Information</h2>
+        <p><strong>Email:</strong> <a href="mailto:shixiuwen1991@yeah.net" style="color: #FF4655;">shixiuwen1991@yeah.net</a></p>
+        <p><strong>Response Time:</strong> Weekdays: Within 24 hours, Weekends: Within 48 hours</p>
+        
+        <h2>Send Message</h2>
+        <form>
+            <label>Name *</label>
+            <input type="text" name="name" required placeholder="Enter your name">
+            
+            <label>Email *</label>
+            <input type="email" name="email" required placeholder="Enter your email address">
+            
+            <label>Subject *</label>
+            <select name="subject" required>
+                <option value="">Please select subject type</option>
+                <option value="Game Related">Game Related</option>
+                <option value="Technical Support">Technical Support</option>
+                <option value="Business Cooperation">Business Cooperation</option>
+                <option value="Other">Other</option>
+            </select>
+            
+            <label>Message *</label>
+            <textarea name="message" required rows="6" placeholder="Please describe your question or suggestion in detail..."></textarea>
+            
+            <button type="submit">Send Message</button>
+        </form>
+        
+        <p><a href="/" style="color: #FF4655;">Back to Home</a></p>
+    </div>
+</body>
+</html> 
