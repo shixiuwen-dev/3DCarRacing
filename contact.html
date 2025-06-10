@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Contact Us - WorkMoyu Games</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -41,6 +42,7 @@
 </head>
 
 <body class="min-h-screen">
+    <!-- Navigation -->
     <nav style="background: linear-gradient(to bottom, #0F1923 90%, rgba(15, 25, 35, 0.95));" class="fixed w-full z-50 shadow-xl border-b border-gray-800">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
@@ -57,12 +59,14 @@
         </div>
     </nav>
 
+    <!-- Main Content -->
     <main class="pt-24 pb-12 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
         <div class="bg-black bg-opacity-30 rounded-2xl p-8 md:p-12">
             <h1 class="text-4xl md:text-5xl font-bold mb-8 text-center">Contact Us</h1>
             <p class="text-gray-400 text-center mb-12">We'd love to hear from you! Whether you have questions, suggestions, or partnership opportunities, feel free to reach out to us.</p>
             
             <div class="grid md:grid-cols-2 gap-12">
+                <!-- Contact Information -->
                 <div class="space-y-8">
                     <div>
                         <h2 class="text-2xl font-bold mb-6 text-gaming-primary">Contact Information</h2>
@@ -122,25 +126,26 @@
                         <h2 class="text-2xl font-bold mb-6 text-gaming-primary">Common Inquiry Types</h2>
                         <div class="space-y-4">
                             <div class="bg-black bg-opacity-20 rounded-lg p-4">
-                                <h3 class="font-semibold mb-2">[GAME] Game Related</h3>
+                                <h3 class="font-semibold mb-2">🎮 Game Related</h3>
                                 <p class="text-sm text-gray-300">Game loading issues, game suggestions, new game recommendations, etc.</p>
                             </div>
                             <div class="bg-black bg-opacity-20 rounded-lg p-4">
-                                <h3 class="font-semibold mb-2">[TECH] Technical Support</h3>
+                                <h3 class="font-semibold mb-2">🔧 Technical Support</h3>
                                 <p class="text-sm text-gray-300">Website usage issues, browser compatibility, performance optimization, etc.</p>
                             </div>
                             <div class="bg-black bg-opacity-20 rounded-lg p-4">
-                                <h3 class="font-semibold mb-2">[BIZ] Business Cooperation</h3>
+                                <h3 class="font-semibold mb-2">🤝 Business Cooperation</h3>
                                 <p class="text-sm text-gray-300">Game developer partnerships, advertising, content collaboration, etc.</p>
                             </div>
                             <div class="bg-black bg-opacity-20 rounded-lg p-4">
-                                <h3 class="font-semibold mb-2">[IDEA] Feedback & Suggestions</h3>
+                                <h3 class="font-semibold mb-2">💡 Feedback & Suggestions</h3>
                                 <p class="text-sm text-gray-300">Feature suggestions, user experience feedback, improvement ideas, etc.</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- Contact Form -->
                 <div class="contact-form">
                     <h2 class="text-2xl font-bold mb-6 text-gaming-primary">Send Message</h2>
                     <form id="contact-form" class="space-y-6">
@@ -199,6 +204,7 @@
                 </div>
             </div>
 
+            <!-- FAQ Section -->
             <div class="mt-16">
                 <h2 class="text-2xl font-bold mb-8 text-gaming-primary text-center">Frequently Asked Questions</h2>
                 <div class="grid md:grid-cols-2 gap-6">
@@ -231,6 +237,7 @@
         </div>
     </main>
 
+    <!-- Footer -->
     <footer class="bg-black bg-opacity-30 py-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col md:flex-row justify-between items-center">
@@ -258,20 +265,25 @@
             const formData = new FormData(this);
             const data = Object.fromEntries(formData);
             
-            const subject = 'WorkMoyu Games - ' + data.subject + ' - ' + data.name;
-            const body = 'Name: ' + data.name + '\nEmail: ' + data.email + '\nSubject Type: ' + data.subject + '\n\nMessage:\n' + data.message;
+            // Build email content
+            const subject = `WorkMoyu Games - ${data.subject} - ${data.name}`;
+            const body = `Name: ${data.name}\nEmail: ${data.email}\nSubject Type: ${data.subject}\n\nMessage:\n${data.message}`;
             
-            const mailtoLink = 'mailto:shixiuwen1991@yeah.net?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+            // Create mailto link
+            const mailtoLink = `mailto:shixiuwen1991@yeah.net?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
             
+            // Open email client
             window.location.href = mailtoLink;
             
+            // Show success message
             const messageDiv = document.getElementById('form-message');
             messageDiv.className = 'mt-4 p-4 bg-green-600 bg-opacity-20 border border-green-500 border-opacity-30 rounded-lg text-green-400';
             messageDiv.textContent = 'Email client has been opened. Please send the email to complete your contact. If it did not open automatically, please manually copy the email address: shixiuwen1991@yeah.net';
             messageDiv.classList.remove('hidden');
             
+            // Reset form
             this.reset();
         });
     </script>
 </body>
-</html> 
+</html>
