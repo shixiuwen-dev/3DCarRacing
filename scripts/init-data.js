@@ -1,16 +1,7 @@
 // Firebase configuration and initialization
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import { getFirestore, collection, addDoc, getDocs, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-
-const firebaseConfig = {
-    apiKey: "AIzaSyDQJZXPgYrXpbKBBZHKZhc7XDWlnqR7iAo",
-    authDomain: "workmoyu-games.firebaseapp.com",
-    projectId: "workmoyu-games",
-    storageBucket: "workmoyu-games.appspot.com",
-    messagingSenderId: "1082880009453",
-    appId: "1:1082880009453:web:c2a5c5f7c2f2d2b3b3b3b3",
-    measurementId: "G-WHGEE36CNX"
-};
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { firebaseConfig } from './firebase-init.js';
 
 // 初始化 Firebase
 console.log('Initializing Firebase...');
@@ -61,7 +52,7 @@ const sampleGames = [
             "Real-time multiplayer",
             "Global leaderboards"
         ],
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp()
     },
     {
         title: "Space Shooter",
@@ -85,7 +76,7 @@ const sampleGames = [
             "Power-up system",
             "Progressive difficulty"
         ],
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp()
     },
     {
         title: "Pixel Jumper",
@@ -109,7 +100,7 @@ const sampleGames = [
             "Power-ups",
             "Level editor"
         ],
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp()
     },
     {
         title: "Zombie Survival",
@@ -133,7 +124,7 @@ const sampleGames = [
             "Character progression",
             "Base building"
         ],
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp()
     },
     {
         title: "Strategy Commander",
@@ -157,7 +148,7 @@ const sampleGames = [
             "Multiplayer battles",
             "Resource management"
         ],
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp()
     },
     {
         title: "Puzzle Master",
@@ -181,12 +172,12 @@ const sampleGames = [
             "Achievement system",
             "Daily challenges"
         ],
-        createdAt: new Date().toISOString()
+        createdAt: serverTimestamp()
     }
 ];
 
 // 清除现有数据
-async function clearExistingData() {
+export async function clearExistingData() {
     try {
         updateStatus('Clearing existing data...');
         console.log('Starting to clear existing data...');
@@ -211,8 +202,38 @@ async function clearExistingData() {
     }
 }
 
+// 更新游戏的播放次数
+async function updateGamePlays() {
+    try {
+        updateStatus('Updating game plays...');
+        console.log('Starting to update game plays...');
+        
+        const gamesSnapshot = await getDocs(collection(db, 'games'));
+        console.log(`Found ${gamesSnapshot.size} games to update`);
+        
+        const updatePromises = [];
+        gamesSnapshot.forEach(doc => {
+            const plays = Math.floor(Math.random() * 100000); // 随机生成 0-100000 的播放次数
+            console.log(`Updating plays for game ${doc.id} to ${plays}`);
+            updatePromises.push(updateDoc(doc.ref, { 
+                plays,
+                updatedAt: serverTimestamp()
+            }));
+        });
+        
+        await Promise.all(updatePromises);
+        console.log('All game plays updated successfully');
+        updateStatus('Game plays updated successfully');
+        return true;
+    } catch (error) {
+        console.error('Error updating game plays:', error);
+        updateStatus(`Error updating game plays: ${error.message}`, true);
+        throw error;
+    }
+}
+
 // 初始化数据
-async function initializeData() {
+export async function initializeData() {
     try {
         updateStatus('Starting data initialization...');
         console.log('Starting data initialization...');
@@ -230,6 +251,9 @@ async function initializeData() {
             console.log(`Added game: ${game.title} with ID: ${docRef.id}`);
             updateStatus(`Added game: ${game.title}`);
         }
+        
+        // 更新游戏的播放次数
+        await updateGamePlays();
         
         console.log('All games added successfully');
         updateStatus('✅ All games added successfully! You can now return to the homepage.');
@@ -252,11 +276,7 @@ async function initializeData() {
     }
 }
 
-// 当页面加载完成时开始初始化
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM Content Loaded, starting initialization...');
-    initializeData().catch(error => {
-        console.error('Unhandled error during initialization:', error);
-        updateStatus(`Unhandled error: ${error.message}`, true);
-    });
-}); 
+// 自动初始化已移除，现在通过手动点击按钮触发
+
+// 导出所有需要的函数
+export { updateStatus, updateGamePlays }; 

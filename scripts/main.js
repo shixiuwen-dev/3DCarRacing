@@ -47,10 +47,11 @@ function createGameCard(game) {
 
 // 格式化游戏播放次数
 function formatPlays(plays) {
+    if (!plays) return '0';
     if (plays >= 1000) {
         return Math.floor(plays / 1000) + 'K+';
     }
-    return plays;
+    return plays.toString();
 }
 
 // 加载游戏

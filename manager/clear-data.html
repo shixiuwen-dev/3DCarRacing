@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>清空数据工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="max-w-4xl mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8">清空数据工具</h1>
+        
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">清空游戏数据</h2>
+            <div class="space-y-4">
+                <p class="text-red-400">警告：此操作将删除所有游戏数据，且无法恢复！</p>
+                <button id="clearButton" 
+                        class="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 disabled:opacity-50">
+                    清空数据
+                </button>
+            </div>
+        </div>
+        
+        <div class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-bold mb-4">操作日志</h2>
+            <div id="logContainer" class="bg-gray-700 rounded p-4 h-64 overflow-y-auto font-mono text-sm">
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, collection, getDocs, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { firebaseConfig } from '../scripts/firebase-init.js';
+
+        // 初始化 Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        // Setup global variables
+        const logContainer = document.getElementById('logContainer');
+        const clearButton = document.getElementById('clearButton');
+        let isClearing = false;
+
+        // Add logging function
+        function log(message, type = 'info') {
+            const colors = {
+                info: 'text-gray-300',
+                success: 'text-green-400',
+                error: 'text-red-400',
+                warning: 'text-yellow-400'
+            };
+            const div = document.createElement('div');
+            div.className = `${colors[type]} mb-1`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(div);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Add clearData function
+        async function clearData() {
+            if (isClearing) return;
+            
+            if (!confirm('确定要清空所有游戏数据吗？此操作无法恢复！')) {
+                return;
+            }
+
+            try {
+                isClearing = true;
+                clearButton.disabled = true;
+                
+                log('开始清空数据...', 'warning');
+                const gamesRef = collection(db, 'games');
+                const snapshot = await getDocs(gamesRef);
+                
+                const totalGames = snapshot.size;
+                log(`找到 ${totalGames} 个游戏需要删除`, 'info');
+                
+                let deletedCount = 0;
+                for (const doc of snapshot.docs) {
+                    await deleteDoc(doc.ref);
+                    deletedCount++;
+                    log(`已删除 ${deletedCount}/${totalGames} 个游戏`, 'info');
+                }
+                
+                log(`成功删除所有 ${totalGames} 个游戏！`, 'success');
+            } catch (error) {
+                log(`清空数据失败: ${error.message}`, 'error');
+                console.error('清空错误:', error);
+            } finally {
+                isClearing = false;
+                clearButton.disabled = false;
+            }
+        }
+
+        // Add event listener to the button
+        clearButton.addEventListener('click', clearData);
+    </script>
+</body>
+</html> 

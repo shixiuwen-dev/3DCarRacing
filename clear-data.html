@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #ff6b81;
+        }
+        #results {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            background: #000;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #4cd137;
+        }
+        .error {
+            color: #ff4757;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Database Management</h1>
+        <div>
+            <button onclick="window.clearData()">Clear All Data</button>
+            <button onclick="window.initializeData()">Initialize Sample Data</button>
+            <button onclick="window.viewCurrentData()">View Current Data</button>
+        </div>
+        <div id="status"></div>
+        <div id="results"></div>
+    </div>
+
+    <script type="module">
+        import { collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { db } from './scripts/firebase-init.js';
+        import { clearExistingData, initializeData } from './scripts/init-data.js';
+
+        // 定义全局函数
+        function updateStatus(message, isError = false) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = isError ? 'error' : 'success';
+            statusDiv.textContent = message;
+        }
+        window.updateStatus = updateStatus;
+
+        window.clearData = async function() {
+            try {
+                await clearExistingData();
+                updateStatus('All data cleared successfully', false);
+            } catch (error) {
+                updateStatus('Failed to clear data: ' + error.message, true);
+            }
+        };
+
+        window.initializeData = async function() {
+            try {
+                await initializeData();
+                updateStatus('Sample data initialized successfully', false);
+            } catch (error) {
+                updateStatus('Failed to initialize data: ' + error.message, true);
+            }
+        };
+
+        window.viewCurrentData = async function() {
+            try {
+                const gamesRef = collection(db, 'games');
+                const q = query(gamesRef, orderBy('createdAt', 'desc'));
+                const snapshot = await getDocs(q);
+                
+                const games = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || doc.data().createdAt,
+                    updatedAt: doc.data().updatedAt?.toDate?.()?.toISOString() || doc.data().updatedAt
+                }));
+                
+                document.getElementById('results').innerHTML = JSON.stringify(games, null, 2);
+                updateStatus(`Found ${games.length} games`, false);
+            } catch (error) {
+                updateStatus('Failed to view data: ' + error.message, true);
+            }
+        };
+    </script>
+</body>
+</html> 

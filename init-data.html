@@ -1,20 +1,87 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Initialize Games Data</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initialize Game Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .error {
+            background-color: #f44336;
+            color: white;
+        }
+        .warning {
+            background-color: #ff9800;
+            color: white;
+        }
+        .info {
+            background-color: #2196F3;
+            color: white;
+        }
+    </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen p-8">
-    <div class="max-w-4xl mx-auto">
-        <h1 class="text-3xl font-bold mb-8">Initialize Games Data</h1>
-        
-        <div id="status" class="mb-8 p-4 bg-gray-800 rounded-lg">
-            <p>Preparing to initialize data...</p>
-        </div>
-        
-        <div id="results" class="space-y-2"></div>
-    </div>
+<body>
+    <h1>Initialize Game Data</h1>
+    <button id="initButton">Initialize Data</button>
+    <div id="status"></div>
 
-    <script type="module" src="scripts/init-data.js"></script>
+    <script type="module">
+        import { initializeData } from './scripts/init-data.js';
+
+        const initButton = document.getElementById('initButton');
+        const statusDiv = document.getElementById('status');
+
+        // 更新状态显示
+        window.updateStatus = function(message, isError = false) {
+            const div = document.createElement('div');
+            div.textContent = message;
+            div.className = isError ? 'error' : 'info';
+            statusDiv.appendChild(div);
+            statusDiv.scrollTop = statusDiv.scrollHeight;
+        };
+
+        // 初始化按钮点击事件
+        initButton.addEventListener('click', async () => {
+            try {
+                initButton.disabled = true;
+                await initializeData();
+                initButton.disabled = false;
+            } catch (error) {
+                console.error('Initialization failed:', error);
+                updateStatus(`Initialization failed: ${error.message}`, true);
+                initButton.disabled = false;
+            }
+        });
+    </script>
 </body>
 </html> 

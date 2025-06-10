@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游戏采集工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="max-w-4xl mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8">游戏采集工具</h1>
+        
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">采集单个游戏</h2>
+            <div class="space-y-4">
+                <div class="flex gap-4">
+                    <input type="text" id="gameUrl" placeholder="输入游戏 URL" 
+                           class="flex-1 px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500">
+                    <button id="crawlButton" 
+                            class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50">
+                        采集
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-gray-800 rounded-lg p-6">
+            <h2 class="text-xl font-bold mb-4">采集日志</h2>
+            <div id="logContainer" class="bg-gray-700 rounded p-4 h-64 overflow-y-auto font-mono text-sm">
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { crawlAndSaveGame } from './crawler/crazy-games.js';
+        
+        // Setup global variables
+        const logContainer = document.getElementById('logContainer');
+        const crawlButton = document.getElementById('crawlButton');
+        const gameUrlInput = document.getElementById('gameUrl');
+        let isCrawling = false;
+
+        // Add logging function
+        function log(message, type = 'info') {
+            const colors = {
+                info: 'text-gray-300',
+                success: 'text-green-400',
+                error: 'text-red-400',
+                warning: 'text-yellow-400'
+            };
+            const div = document.createElement('div');
+            div.className = `${colors[type]} mb-1`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(div);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Add startCrawl function
+        async function startCrawl() {
+            if (isCrawling) return;
+            
+            const url = gameUrlInput.value.trim();
+            if (!url) {
+                log('请输入游戏 URL', 'error');
+                return;
+            }
+            
+            if (!url.startsWith('https://www.crazygames.com/game/')) {
+                log('请输入有效的 CrazyGames 游戏 URL', 'error');
+                return;
+            }
+
+            try {
+                isCrawling = true;
+                crawlButton.disabled = true;
+                gameUrlInput.disabled = true;
+                
+                log(`开始采集游戏...`, 'info');
+                const gameId = await crawlAndSaveGame(url);
+                log(`游戏采集成功！ID: ${gameId}`, 'success');
+            } catch (error) {
+                log(`采集失败: ${error.message}`, 'error');
+                console.error('采集错误:', error);
+            } finally {
+                isCrawling = false;
+                crawlButton.disabled = false;
+                gameUrlInput.disabled = false;
+            }
+        }
+
+        // Add event listener to the button
+        crawlButton.addEventListener('click', startCrawl);
+
+        // Add event listener for Enter key in the input field
+        gameUrlInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                startCrawl();
+            }
+        });
+    </script>
+</body>
+</html> 

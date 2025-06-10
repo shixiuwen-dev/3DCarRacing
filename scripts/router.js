@@ -1,4 +1,4 @@
-import { getFirestore, collection, getDocs, query, where, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore, collection, getDocs, query, where, orderBy, limit, startAfter } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 import { db } from './firebase-init.js';
 
 const mainContent = document.getElementById('main-content');
@@ -30,7 +30,8 @@ function handleClick(e) {
 // 处理路由
 async function handleRoute() {
     const path = window.location.pathname;
-    console.log('Current path:', path);
+    console.log('🛣️ Current path:', path);
+    console.log('🔄 handleRoute called');
     const [base, param] = path.split('/').filter(Boolean);
     console.log('Route parts:', { base, param });
     
@@ -69,40 +70,228 @@ async function handleRoute() {
     }
 }
 
+// 存储最后一个文档的引用
+let lastLoadedDoc = null;
+
+// 获取游戏总数
+async function getTotalGamesCount() {
+    try {
+        console.log('Getting total games count...');
+        
+        // 直接查询Firebase获取所有游戏数量
+        const gamesRef = collection(db, 'games');
+        const gamesQuery = query(gamesRef, orderBy('createdAt', 'desc'));
+        
+        const snapshot = await getDocs(gamesQuery);
+        const totalCount = snapshot.size;
+        
+        console.log('Total games count:', totalCount);
+        return totalCount;
+    } catch (error) {
+        console.error('Error getting total games count:', error);
+        return 0;
+    }
+}
+
+// 获取所有游戏（首页用，限制12条）
+async function getAllGames() {
+    try {
+        console.log('Getting games for homepage...');
+        
+        // 需要直接调用Firebase查询以获取文档引用
+        const gamesRef = collection(db, 'games');
+        const gamesQuery = query(gamesRef, 
+            orderBy('createdAt', 'desc'), 
+            limit(12)
+        );
+        
+        const snapshot = await getDocs(gamesQuery);
+        console.log(`getAllGames returned ${snapshot.size} games`);
+        
+        const games = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        
+        // 保存最后一个文档的引用（保存Firebase文档对象，不是数据对象）
+        if (snapshot.docs.length > 0) {
+            lastLoadedDoc = snapshot.docs[snapshot.docs.length - 1];
+            console.log('Set lastLoadedDoc to:', lastLoadedDoc.id);
+        } else {
+            lastLoadedDoc = null;
+            console.log('No documents found, lastLoadedDoc set to null');
+        }
+        
+        return games;
+    } catch (error) {
+        console.error('Error in getAllGames:', error);
+        throw error;
+    }
+}
+
+// 加载更多游戏
+window.loadMoreGames = async function() {
+    try {
+        const loadMoreButton = document.querySelector('#all-games button');
+        if (!loadMoreButton) return;
+        
+        loadMoreButton.textContent = '加载中...';
+        loadMoreButton.disabled = true;
+
+        // 确保有lastLoadedDoc才能进行分页查询
+        if (!lastLoadedDoc) {
+            console.error('No lastLoadedDoc available for pagination');
+            loadMoreButton.textContent = '暂无更多游戏';
+            loadMoreButton.disabled = true;
+            return;
+        }
+
+        console.log('Starting pagination with lastDoc:', lastLoadedDoc.id);
+
+        // 直接使用Firebase查询获取更多游戏
+        const gamesRef = collection(db, 'games');
+        const moreGamesQuery = query(gamesRef, 
+            orderBy('createdAt', 'desc'),
+            startAfter(lastLoadedDoc),
+            limit(12)
+        );
+        
+        const moreSnapshot = await getDocs(moreGamesQuery);
+        const moreGames = moreSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        console.log('Pagination query returned:', moreGames.length, 'games');
+        console.log('Game IDs:', moreGames.map(g => g.id));
+
+        if (moreGames.length === 0) {
+            loadMoreButton.textContent = '暂无更多游戏';
+            loadMoreButton.disabled = true;
+            return;
+        }
+
+        // 更新最后一个文档的引用（保存Firebase文档对象）
+        if (moreSnapshot.docs.length > 0) {
+            lastLoadedDoc = moreSnapshot.docs[moreSnapshot.docs.length - 1];
+            console.log('Updated lastLoadedDoc to:', lastLoadedDoc.id);
+        }
+
+        const allGamesGrid = document.querySelector('#all-games .grid');
+        if (allGamesGrid) {
+            moreGames.forEach(game => {
+                allGamesGrid.innerHTML += createGameCard(game);
+            });
+        }
+
+        // 如果返回的游戏数量小于限制数量，说明没有更多了
+        if (moreGames.length < 12) {
+            loadMoreButton.textContent = '暂无更多游戏';
+            loadMoreButton.disabled = true;
+        } else {
+            loadMoreButton.textContent = 'Load More Games';
+            loadMoreButton.disabled = false;
+        }
+    } catch (error) {
+        console.error('Error loading more games:', error);
+        const loadMoreButton = document.querySelector('#all-games button');
+        if (loadMoreButton) {
+            loadMoreButton.textContent = '加载失败，请重试';
+            loadMoreButton.disabled = false;
+        }
+    }
+}
+
 // 首页内容
 async function showHomePage() {
     try {
-        console.log('Loading home page...');
+        console.log('🚀 Loading home page...');
+        console.log('✅ showHomePage function called');
         mainContent.innerHTML = createLoadingTemplate();
 
         // 获取新游戏和热门游戏
-        console.log('Fetching new games...');
+        console.log('🎮 Fetching new games...');
         const newGames = await getNewGames();
-        console.log('New games loaded:', newGames);
+        console.log('New games loaded:', newGames.length, 'games');
+        console.log('New games data:', newGames);
+        
+        // 如果没有新游戏数据，显示详细错误信息
+        if (!newGames || newGames.length === 0) {
+            console.warn('No new games found in database');
+        }
         
         console.log('Fetching popular games...');
         const popularGames = await getPopularGames();
-        console.log('Popular games loaded:', popularGames);
+        console.log('Popular games loaded:', popularGames.length, 'games');
+        console.log('Popular games data:', popularGames);
         
-        // 移除在新游戏中已经出现的游戏
-        const uniquePopularGames = popularGames.filter(popularGame => 
-            !newGames.some(newGame => newGame.id === popularGame.id)
-        );
+        // 获取所有游戏
+        console.log('Fetching all games...');
+        const allGames = await getAllGames();
+        console.log('All games loaded:', allGames.length, 'games');
+        console.log('All games data:', allGames);
+        
+        // 获取游戏总数以判断是否需要显示Load More按钮
+        const totalGamesCount = await getTotalGamesCount();
+        console.log('Total games in database:', totalGamesCount);
+        console.log('Total games type:', typeof totalGamesCount);
+        console.log('Should show Load More button?', totalGamesCount > 12);
+        console.log('Comparison result:', totalGamesCount, '>', 12, '=', totalGamesCount > 12);
+        
+        // 如果没有游戏数据，提示用户初始化数据
+        if (!allGames || allGames.length === 0) {
+            console.warn('No games found in database. Database may need to be initialized.');
+        }
+
+        // 检查是否有热门游戏
+        const hasPopularGames = popularGames && popularGames.length > 0;
+        console.log('Has popular games:', hasPopularGames);
     
         mainContent.innerHTML = `
-            <section id="new-games" class="mb-12">
-                <h2 class="text-2xl font-bold mb-6">New Games</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    ${newGames.map(game => createGameCard(game)).join('')}
-                </div>
-            </section>
-            
-            <section id="popular" class="mb-12">
-                <h2 class="text-2xl font-bold mb-6">Popular Games</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    ${uniquePopularGames.map(game => createGameCard(game)).join('')}
-                </div>
-            </section>
+            <div class="container mx-auto px-4 py-8">
+                <section id="new-games" class="mb-12">
+                    <h2 class="text-2xl font-bold mb-6">New Games</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 min-h-[320px]">
+                        ${newGames && newGames.length > 0 ? 
+                            newGames.map(game => createGameCard(game)).join('') : 
+                            '<div class="col-span-full text-center py-12"><p class="text-gray-400">No new games available at the moment. Check back later!</p></div>'
+                        }
+                    </div>
+                </section>
+                
+                ${hasPopularGames ? `
+                    <section id="popular" class="mb-12">
+                        <h2 class="text-2xl font-bold mb-6">Popular Games</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 min-h-[320px]">
+                            ${popularGames && popularGames.length > 0 ? 
+                                popularGames.map(game => createGameCard(game)).join('') : 
+                                '<div class="col-span-full text-center py-12"><p class="text-gray-400">No popular games available at the moment.</p></div>'
+                            }
+                        </div>
+                    </section>
+                ` : ''}
+
+                <section id="all-games" class="mb-12">
+                    <h2 class="text-2xl font-bold mb-6">All Games (${totalGamesCount})</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 min-h-[320px] h-auto">
+                        ${allGames && allGames.length > 0 ? 
+                            allGames.map(game => createGameCard(game)).join('') : 
+                            '<div class="col-span-full text-center py-12"><p class="text-gray-400 mb-4">暂无游戏数据</p><a href="/init-data.html" class="bg-gaming-primary hover:bg-gaming-primary/80 px-4 py-2 rounded-lg transition">初始化示例数据</a></div>'
+                        }
+                    </div>
+                    ${totalGamesCount > 12 ? `
+                        <div class="text-center mt-8">
+                            <button onclick="loadMoreGames()" class="px-6 py-3 bg-gaming-primary hover:bg-gaming-primary/80 rounded-lg transition">
+                                Load More Games
+                            </button>
+                        </div>
+                    ` : `
+                        <div class="text-center mt-8 text-gray-500">
+                            <!-- 调试：总游戏数 ${totalGamesCount}，不显示Load More按钮 -->
+                        </div>
+                    `}
+                </section>
+            </div>
         `;
     } catch (error) {
         console.error('Error loading home page:', error);
@@ -115,6 +304,13 @@ async function showHomePage() {
 async function getGames(options = {}) {
     try {
         console.log('Getting games with options:', JSON.stringify(options));
+        
+        // 检查数据库连接
+        if (!db) {
+            console.error('Database not initialized');
+            throw new Error('Database not initialized');
+        }
+        
         let queryConstraints = [];
         
         // 如果指定了分类且不是'all'，添加分类过滤
@@ -123,14 +319,21 @@ async function getGames(options = {}) {
             queryConstraints.push(where('category', '==', options.category.toLowerCase()));
         }
         
-        // 添加排序
-        if (options.orderBy) {
-            console.log('Adding orderBy:', options.orderBy, options.orderDirection);
-            queryConstraints.push(orderBy(options.orderBy, options.orderDirection || 'desc'));
-            // 如果是按播放次数排序，添加创建时间作为第二排序条件
-            if (options.orderBy === 'plays') {
-                queryConstraints.push(orderBy('createdAt', 'desc'));
-            }
+        // 添加排序（如果没有指定排序，使用默认排序）
+        const orderByField = options.orderBy || 'createdAt';
+        const orderDirection = options.orderDirection || 'desc';
+        console.log('Adding orderBy:', orderByField, orderDirection);
+        queryConstraints.push(orderBy(orderByField, orderDirection));
+        
+        // 如果是按播放次数排序，添加创建时间作为第二排序条件
+        if (orderByField === 'plays') {
+            queryConstraints.push(orderBy('createdAt', 'desc'));
+        }
+        
+        // 添加分页
+        if (options.lastDoc) {
+            console.log('Adding pagination after document:', options.lastDoc.id);
+            queryConstraints.push(startAfter(options.lastDoc));
         }
         
         // 添加限制
@@ -141,25 +344,29 @@ async function getGames(options = {}) {
         
         console.log('Final query constraints:', queryConstraints);
         const gamesRef = collection(db, 'games');
-        console.log('Collection reference created');
+        console.log('Collection reference created for games collection');
+        
         const gamesQuery = query(gamesRef, ...queryConstraints);
         console.log('Query created, executing...');
         
         const snapshot = await getDocs(gamesQuery);
-        console.log('Query executed, results:', snapshot.size, 'games found');
+        console.log(`Query returned ${snapshot.size} games`);
         
         const games = snapshot.docs.map(doc => {
-            const data = doc.data();
-            console.log('Game data:', doc.id, data);
-            return { id: doc.id, ...data };
+            const gameData = {
+                id: doc.id,
+                ...doc.data()
+            };
+            console.log('Game data:', gameData);
+            return gameData;
         });
         
         return games;
     } catch (error) {
-        console.error('Error in getGames:', error);
+        console.error('Error getting games:', error);
+        console.error('Error details:', error.message);
         console.error('Error stack:', error.stack);
-        console.error('Query options:', JSON.stringify(options));
-        throw new Error(`Failed to fetch games: ${error.message}`);
+        throw error;
     }
 }
 
@@ -174,11 +381,20 @@ async function getNewGames() {
 
 // 获取热门游戏
 async function getPopularGames() {
-    return getGames({
-        orderBy: 'plays',
-        orderDirection: 'desc',
-        limit: 4
-    });
+    try {
+        console.log('Getting popular games...');
+        // 直接获取播放次数最多的4个游戏
+        const games = await getGames({
+            orderBy: 'plays',
+            orderDirection: 'desc',
+            limit: 4
+        });
+        console.log('Popular games loaded:', games.length, 'games');
+        return games;
+    } catch (error) {
+        console.error('Error getting popular games:', error);
+        return [];
+    }
 }
 
 // 获取相似游戏
@@ -344,7 +560,7 @@ async function showGamePage(gameSlug) {
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             ${similarGames.map(game => `
                                 <div class="game-card rounded-xl overflow-hidden group h-full flex flex-col">
-                                    <div class="aspect-video relative overflow-hidden flex-shrink-0">
+                                    <div class="relative overflow-hidden flex-shrink-0" style="height: 200px; min-height: 200px;">
                                         <img src="${game.thumbnail}" 
                                              alt="${game.title}" 
                                              class="w-full h-full object-cover transform group-hover:scale-110 transition duration-300">
@@ -406,12 +622,21 @@ function formatPlays(plays) {
 
 // 创建游戏卡片
 function createGameCard(game) {
+    console.log('Creating game card for:', game);
+    console.log('Game thumbnail:', game.thumbnail);
+    console.log('Game cover image:', game.coverImage);
+    
     return `
-        <div class="game-card rounded-xl overflow-hidden group h-full flex flex-col">
-            <div class="aspect-video relative overflow-hidden flex-shrink-0">
-                <img src="${game.thumbnail}" 
+        <div class="game-card bg-black/30 rounded-xl overflow-hidden group flex flex-col">
+            <div class="relative w-full bg-black/50" style="height: 200px; min-height: 200px;">
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gaming-primary image-loading"></div>
+                </div>
+                <img src="${game.thumbnail || game.coverImage || '/assets/game-placeholder.svg'}" 
                      alt="${game.title}" 
-                     class="w-full h-full object-cover transform group-hover:scale-110 transition duration-300">
+                     class="absolute inset-0 w-full h-full object-cover transform group-hover:scale-110 transition duration-300"
+                     onload="this.parentElement.querySelector('.image-loading').style.display='none'"
+                     onerror="this.src='/assets/game-placeholder.svg'">
             </div>
             <div class="p-4 flex flex-col flex-grow">
                 <div class="flex items-center justify-between mb-2">
@@ -420,7 +645,7 @@ function createGameCard(game) {
                 </div>
                 <p class="text-sm text-gray-300 mt-1 line-clamp-2">${game.description}</p>
                 <div class="flex items-center justify-between mt-auto pt-4">
-                    <span class="text-sm text-gray-400">${formatPlays(game.plays)} plays</span>
+                    <span class="text-sm text-gray-400">${game.plays || 0} plays</span>
                     <a href="/games/${game.slug}" data-route class="bg-gaming-primary hover:bg-gaming-primary/80 px-4 py-2 rounded-lg transition">Play</a>
                 </div>
             </div>

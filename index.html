@@ -75,9 +75,9 @@
                 </div>
                 <div class="flex items-center">
                     <div class="relative">
-                        <div class="relative">
-                            <input type="text" 
-                                   id="search-input"
+                    <div class="relative">
+                        <input type="text" 
+                               id="search-input"
                                    placeholder="Search games by name" 
                                    class="w-64 pl-4 pr-10 py-2 bg-[#1a1a1a] border border-gray-600 rounded-lg 
                                           focus:outline-none focus:border-gaming-primary focus:ring-1 focus:ring-gaming-primary
@@ -125,15 +125,16 @@
         // 等待 Firebase 初始化完成后再初始化其他功能
         window.addEventListener('DOMContentLoaded', async () => {
             try {
-                console.log('Starting application initialization...');
-                
-                // 初始化路由
+                console.log('🔥 Starting application initialization...');
+                console.log('✅ DOM Content Loaded');
+
+        // 初始化路由
                 console.log('Initializing router...');
-                initRouter();
-                
-                // 初始化搜索
+        initRouter();
+        
+        // 初始化搜索
                 console.log('Initializing search...');
-                initSearch();
+        initSearch();
                 
                 console.log('Application initialization complete');
             } catch (error) {
