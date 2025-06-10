@@ -359,11 +359,11 @@ async function showHomePage() {
         console.log('Popular games loaded:', popularGames.length, 'games');
         console.log('Popular games data:', popularGames);
         
-        // 获取其他分类游戏
-        console.log('Fetching other games...');
-        const otherGames = await getOtherGames();
-        console.log('Other games loaded:', otherGames.length, 'games');
-        console.log('Other games data:', otherGames);
+        // 注释掉其他分类游戏的获取，仅保留导航入口
+        // console.log('Fetching other games...');
+        // const otherGames = await getOtherGames();
+        // console.log('Other games loaded:', otherGames.length, 'games');
+        // console.log('Other games data:', otherGames);
         
         // 获取所有游戏
         console.log('Fetching all games...');
@@ -383,11 +383,9 @@ async function showHomePage() {
             console.warn('No games found in database. Database may need to be initialized.');
         }
 
-        // 检查是否有热门游戏和其他游戏
+        // 检查是否有热门游戏
         const hasPopularGames = popularGames && popularGames.length > 0;
-        const hasOtherGames = otherGames && otherGames.length > 0;
         console.log('Has popular games:', hasPopularGames);
-        console.log('Has other games:', hasOtherGames);
     
         mainContent.innerHTML = `
             <div class="container mx-auto px-4 py-8">
@@ -413,17 +411,7 @@ async function showHomePage() {
                     </section>
                 ` : ''}
 
-                ${hasOtherGames ? `
-                    <section id="other-games" class="mb-12">
-                        <h2 class="text-2xl font-bold mb-6">Other Games</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 min-h-[320px]">
-                            ${otherGames && otherGames.length > 0 ? 
-                                otherGames.map(game => createGameCard(game)).join('') : 
-                                '<div class="col-span-full text-center py-12"><p class="text-gray-400">No other games available at the moment.</p></div>'
-                            }
-                        </div>
-                    </section>
-                ` : ''}
+
 
                 <section id="all-games" class="mb-12">
                     <h2 class="text-2xl font-bold mb-6">All Games (${totalGamesCount})</h2>
@@ -565,7 +553,7 @@ async function getSimilarGames(category, excludeId) {
     }
 }
 
-// 获取其他分类游戏
+// 获取其他分类游戏（保留函数以备将来使用）
 async function getOtherGames() {
     try {
         console.log('Getting other category games...');
@@ -579,6 +567,24 @@ async function getOtherGames() {
         return games;
     } catch (error) {
         console.error('Error getting other games:', error);
+        return [];
+    }
+}
+
+// 获取运动分类游戏
+async function getSportGames() {
+    try {
+        console.log('Getting sport category games...');
+        const games = await getGames({
+            category: 'sport',
+            orderBy: 'createdAt',
+            orderDirection: 'desc',
+            limit: 4
+        });
+        console.log('Sport games loaded:', games.length, 'games');
+        return games;
+    } catch (error) {
+        console.error('Error getting sport games:', error);
         return [];
     }
 }

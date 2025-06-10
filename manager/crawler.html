@@ -30,29 +30,70 @@
             <h2 class="text-xl font-bold mb-4">自动采集游戏</h2>
             <div class="space-y-4">
                 <div class="text-gray-300 text-sm mb-4">
-                    <p>📋 自动从 CrazyGames 首页采集游戏，具备以下功能：</p>
+                    <p>📋 从指定地址自动采集游戏，具备以下功能：</p>
                     <ul class="list-disc list-inside mt-2 space-y-1">
                         <li>✅ 自动检查重复游戏，跳过已存在的游戏</li>
                         <li>✅ 验证缩略图有效性，舍弃无法加载缩略图的游戏</li>
                         <li>✅ 智能进入游戏详情页面爬取完整信息</li>
                         <li>✅ 实时显示采集进度和结果</li>
+                        <li>✅ 支持从指定分类页面采集并自动归类</li>
                     </ul>
                 </div>
-                <div class="flex gap-4 items-center">
-                    <div class="flex items-center gap-2">
-                        <label for="targetCount" class="text-sm">目标数量:</label>
-                        <input type="number" id="targetCount" value="20" min="1" max="50" 
-                               class="w-20 px-3 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500">
+                
+                <!-- 采集配置 -->
+                <div class="space-y-4">
+                    <div class="flex gap-4 items-center">
+                        <label for="crawlUrl" class="text-sm whitespace-nowrap">采集地址:</label>
+                        <input type="text" id="crawlUrl" 
+                               placeholder="例如: https://www.crazygames.com/t/action 或 https://www.crazygames.com/"
+                               value="https://www.crazygames.com/"
+                               class="flex-1 px-3 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500">
+                                                 <select id="crawlCategory" 
+                                 class="px-3 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500">
+                             <option value="action">Action 动作</option>
+                             <option value="racing">Racing 竞速</option>
+                             <option value="strategy">Strategy 策略</option>
+                             <option value="arcade">Arcade 街机</option>
+                             <option value="sport">Sport 运动</option>
+                             <option value="other">Other 其他</option>
+                         </select>
                     </div>
-                    <button id="autoCrawlButton" 
-                            class="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:opacity-50">
-                        🚀 开始自动采集
-                    </button>
-                    <button id="stopCrawlButton" 
-                            class="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 disabled:opacity-50" 
-                            style="display: none;">
-                        ⏹️ 停止采集
-                    </button>
+                    
+                    <div class="flex gap-4 items-center">
+                        <div class="flex items-center gap-2">
+                            <label for="targetCount" class="text-sm">目标数量:</label>
+                            <input type="number" id="targetCount" value="20" min="1" max="50" 
+                                   class="w-20 px-3 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500">
+                        </div>
+                        <button id="autoCrawlButton" 
+                                class="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:opacity-50">
+                            🚀 开始自动采集
+                        </button>
+                        <button id="stopCrawlButton" 
+                                class="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 disabled:opacity-50" 
+                                style="display: none;">
+                            ⏹️ 停止采集
+                        </button>
+                    </div>
+                    
+                    <!-- 快捷选择 -->
+                    <div class="text-sm text-gray-400">
+                        <p>💡 快捷选择常用分类页面:</p>
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="setQuickUrl('https://www.crazygames.com/c/action', 'action')" 
+                                    class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs">Action</button>
+                            <button onclick="setQuickUrl('https://www.crazygames.com/t/racing', 'racing')" 
+                                    class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs">Racing</button>
+                            <button onclick="setQuickUrl('https://www.crazygames.com/t/strategy', 'strategy')" 
+                                    class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs">Strategy</button>
+                            <button onclick="setQuickUrl('https://www.crazygames.com/t/arcade', 'arcade')" 
+                                    class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs">Arcade</button>
+                            <button onclick="setQuickUrl('https://www.crazygames.com/c/sports', 'sport')" 
+                                    class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs">Sports</button>
+                            <button onclick="setQuickUrl('https://www.crazygames.com/', 'other')" 
+                                    class="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-xs">首页</button>
+                        </div>
+                    </div>
                 </div>
                 <div id="progressContainer" class="hidden">
                     <div class="bg-gray-700 rounded-full h-2">
@@ -87,6 +128,8 @@
         const autoCrawlButton = document.getElementById('autoCrawlButton');
         const stopCrawlButton = document.getElementById('stopCrawlButton');
         const targetCountInput = document.getElementById('targetCount');
+        const crawlUrlInput = document.getElementById('crawlUrl');
+        const crawlCategorySelect = document.getElementById('crawlCategory');
         const progressContainer = document.getElementById('progressContainer');
         const progressBar = document.getElementById('progressBar');
         const progressText = document.getElementById('progressText');
@@ -152,11 +195,31 @@
             }
         }
 
+        // Set quick URL and category
+        window.setQuickUrl = function(url, category) {
+            crawlUrlInput.value = url;
+            crawlCategorySelect.value = category;
+            log(`已设置采集地址: ${url}, 分类: ${category}`, 'info');
+        };
+
         // Start auto crawl
         async function startAutoCrawl() {
             if (isCrawling) return;
             
             const targetCount = parseInt(targetCountInput.value) || 20;
+            const crawlUrl = crawlUrlInput.value.trim();
+            const crawlCategory = crawlCategorySelect.value;
+            
+            // 验证输入
+            if (!crawlUrl) {
+                log('请输入采集地址', 'error');
+                return;
+            }
+            
+            if (!crawlUrl.startsWith('https://www.crazygames.com/')) {
+                log('请输入有效的 CrazyGames 地址', 'error');
+                return;
+            }
             
             try {
                 isCrawling = true;
@@ -166,9 +229,13 @@
                 autoCrawlButton.style.display = 'none';
                 stopCrawlButton.style.display = 'inline-block';
                 targetCountInput.disabled = true;
+                crawlUrlInput.disabled = true;
+                crawlCategorySelect.disabled = true;
                 progressContainer.classList.remove('hidden');
                 
                 log(`🚀 开始自动采集 ${targetCount} 个游戏`, 'info');
+                log(`📍 采集地址: ${crawlUrl}`, 'info');
+                log(`📂 目标分类: ${crawlCategory}`, 'info');
                 
                 // 定义日志回调函数
                 const logCallback = (message, type) => {
@@ -185,7 +252,7 @@
                     }
                 };
                 
-                const results = await autoCrawlGames(targetCount, logCallback);
+                const results = await autoCrawlGames(targetCount, logCallback, crawlUrl, crawlCategory);
                 
                 if (!shouldStop) {
                     log(`\n🎉 自动采集完成！总结：`, 'success');
@@ -207,6 +274,8 @@
                 autoCrawlButton.style.display = 'inline-block';
                 stopCrawlButton.style.display = 'none';
                 targetCountInput.disabled = false;
+                crawlUrlInput.disabled = false;
+                crawlCategorySelect.disabled = false;
                 
                 setTimeout(() => {
                     progressContainer.classList.add('hidden');

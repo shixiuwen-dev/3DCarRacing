@@ -52,20 +52,23 @@
             
             const normalizedCategory = rawCategory.toLowerCase().trim();
             
-            // 定义分类映射规则
-            const categoryMappings = {
-                // Action 动作类
-                action: ['action', 'fighting', 'shooting', 'beat em up', 'platform', 'platformer'],
-                
-                // Racing 竞速类
-                racing: ['racing', 'driving', 'car', 'motorcycle', 'bike', 'truck', 'drift'],
-                
-                // Strategy 策略类
-                strategy: ['strategy', 'puzzle', 'tower defense', 'real time strategy', 'rts', 'turn based', 'chess', 'checkers'],
-                
-                // Arcade 街机类
-                arcade: ['arcade', 'casual', 'classic', 'retro', 'skill', 'sports', 'basketball', 'football', 'soccer']
-            };
+                         // 定义分类映射规则
+             const categoryMappings = {
+                 // Action 动作类
+                 action: ['action', 'fighting', 'shooting', 'beat em up', 'platform', 'platformer'],
+                 
+                 // Racing 竞速类
+                 racing: ['racing', 'driving', 'car', 'motorcycle', 'bike', 'truck', 'drift'],
+                 
+                 // Strategy 策略类
+                 strategy: ['strategy', 'puzzle', 'tower defense', 'real time strategy', 'rts', 'turn based', 'chess', 'checkers'],
+                 
+                 // Sport 运动类
+                 sport: ['sport', 'sports', 'basketball', 'football', 'soccer', 'tennis', 'golf', 'baseball', 'hockey', 'volleyball', 'athletics'],
+                 
+                 // Arcade 街机类
+                 arcade: ['arcade', 'casual', 'classic', 'retro', 'skill']
+             };
             
             // 遍历映射规则
             for (const [targetCategory, keywords] of Object.entries(categoryMappings)) {

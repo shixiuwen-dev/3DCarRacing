@@ -82,8 +82,11 @@ function mapToExistingCategory(rawCategory) {
         // Strategy 策略类
         strategy: ['strategy', 'puzzle', 'tower defense', 'real time strategy', 'rts', 'turn based', 'chess', 'checkers'],
         
+        // Sport 运动类
+        sport: ['sport', 'sports', 'basketball', 'football', 'soccer', 'tennis', 'golf', 'baseball', 'hockey', 'volleyball', 'athletics'],
+        
         // Arcade 街机类
-        arcade: ['arcade', 'casual', 'classic', 'retro', 'skill', 'sports', 'basketball', 'football', 'soccer']
+        arcade: ['arcade', 'casual', 'classic', 'retro', 'skill']
     };
     
     // 遍历映射规则
@@ -271,11 +274,18 @@ async function saveGameToFirebase(gameData) {
 }
 
 // 采集并保存游戏
-export async function crawlAndSaveGame(url) {
+export async function crawlAndSaveGame(url, forceCategory = null) {
     try {
         console.log('开始采集游戏:', url);
         const gameData = await fetchGameData(url);
         console.log('游戏数据采集完成');
+        
+        // 如果指定了强制分类，覆盖原有分类
+        if (forceCategory) {
+            const originalCategory = gameData.category;
+            gameData.category = forceCategory;
+            console.log(`强制分类设置: ${originalCategory} -> ${forceCategory}`);
+        }
         
         // 检查是否重复
         const duplicateCheck = await checkGameExists(gameData.slug, gameData.sourceUrl);
@@ -292,12 +302,11 @@ export async function crawlAndSaveGame(url) {
     }
 }
 
-// 从CrazyGames首页获取游戏链接
-async function getGameLinksFromHomepage() {
+// 从指定URL获取游戏链接
+async function getGameLinksFromUrl(sourceUrl = 'https://www.crazygames.com/') {
     try {
-        console.log('从CrazyGames首页获取游戏链接...');
-        const homeUrl = 'https://www.crazygames.com/';
-        const response = await fetch(`${PROXY_URL}${encodeURIComponent(homeUrl)}`);
+        console.log(`从 ${sourceUrl} 获取游戏链接...`);
+        const response = await fetch(`${PROXY_URL}${encodeURIComponent(sourceUrl)}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -339,8 +348,8 @@ async function getGameLinksFromHomepage() {
         
         console.log(`总共找到 ${gameLinks.length} 个有效游戏链接`);
         
-        // 如果从首页没找到足够的链接，尝试从游戏分类页面获取
-        if (gameLinks.length < 10) {
+        // 如果从当前页面没找到足够的链接，尝试从其他分类页面获取
+        if (gameLinks.length < 10 && sourceUrl === 'https://www.crazygames.com/') {
             console.log('首页链接不足，尝试从分类页面获取...');
             const categoryUrls = [
                 'https://www.crazygames.com/t/action',
@@ -405,10 +414,13 @@ async function getGameLinksFromHomepage() {
 }
 
 // 自动采集多个游戏
-export async function autoCrawlGames(targetCount = 20, logCallback) {
+export async function autoCrawlGames(targetCount = 20, logCallback, sourceUrl = 'https://www.crazygames.com/', forceCategory = null) {
     try {
         logCallback('开始自动采集游戏...', 'info');
-        const gameLinks = await getGameLinksFromHomepage();
+        if (forceCategory) {
+            logCallback(`强制分类模式: 所有游戏将归类为 "${forceCategory}"`, 'info');
+        }
+        const gameLinks = await getGameLinksFromUrl(sourceUrl);
         logCallback(`找到 ${gameLinks.length} 个候选游戏`, 'info');
         
         let successCount = 0;
@@ -422,7 +434,7 @@ export async function autoCrawlGames(targetCount = 20, logCallback) {
             try {
                 logCallback(`[${i+1}/${gameLinks.length}] 正在采集: ${gameName}`, 'info');
                 
-                const gameId = await crawlAndSaveGame(url);
+                const gameId = await crawlAndSaveGame(url, forceCategory);
                 successCount++;
                 results.push({ url, status: 'success', gameId, gameName });
                 logCallback(`✅ 采集成功: ${gameName} (ID: ${gameId})`, 'success');
