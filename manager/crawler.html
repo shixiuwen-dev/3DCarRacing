@@ -10,11 +10,12 @@
     <div class="max-w-4xl mx-auto p-8">
         <h1 class="text-3xl font-bold mb-8">游戏采集工具</h1>
         
+        <!-- 单个游戏采集 -->
         <div class="bg-gray-800 rounded-lg p-6 mb-8">
             <h2 class="text-xl font-bold mb-4">采集单个游戏</h2>
             <div class="space-y-4">
                 <div class="flex gap-4">
-                    <input type="text" id="gameUrl" placeholder="输入游戏 URL" 
+                    <input type="text" id="gameUrl" placeholder="输入游戏 URL (例如: https://www.crazygames.com/game/10-minute-mage)" 
                            class="flex-1 px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500">
                     <button id="crawlButton" 
                             class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-50">
@@ -24,21 +25,75 @@
             </div>
         </div>
         
+        <!-- 自动采集功能 -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">自动采集游戏</h2>
+            <div class="space-y-4">
+                <div class="text-gray-300 text-sm mb-4">
+                    <p>📋 自动从 CrazyGames 首页采集游戏，具备以下功能：</p>
+                    <ul class="list-disc list-inside mt-2 space-y-1">
+                        <li>✅ 自动检查重复游戏，跳过已存在的游戏</li>
+                        <li>✅ 验证缩略图有效性，舍弃无法加载缩略图的游戏</li>
+                        <li>✅ 智能进入游戏详情页面爬取完整信息</li>
+                        <li>✅ 实时显示采集进度和结果</li>
+                    </ul>
+                </div>
+                <div class="flex gap-4 items-center">
+                    <div class="flex items-center gap-2">
+                        <label for="targetCount" class="text-sm">目标数量:</label>
+                        <input type="number" id="targetCount" value="20" min="1" max="50" 
+                               class="w-20 px-3 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <button id="autoCrawlButton" 
+                            class="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 disabled:opacity-50">
+                        🚀 开始自动采集
+                    </button>
+                    <button id="stopCrawlButton" 
+                            class="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 disabled:opacity-50" 
+                            style="display: none;">
+                        ⏹️ 停止采集
+                    </button>
+                </div>
+                <div id="progressContainer" class="hidden">
+                    <div class="bg-gray-700 rounded-full h-2">
+                        <div id="progressBar" class="bg-green-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <div id="progressText" class="text-sm text-gray-400 mt-1">准备开始...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 采集日志 -->
         <div class="bg-gray-800 rounded-lg p-6">
-            <h2 class="text-xl font-bold mb-4">采集日志</h2>
-            <div id="logContainer" class="bg-gray-700 rounded p-4 h-64 overflow-y-auto font-mono text-sm">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">采集日志</h2>
+                <button id="clearLogButton" 
+                        class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 focus:outline-none text-sm">
+                    清空日志
+                </button>
+            </div>
+            <div id="logContainer" class="bg-gray-700 rounded p-4 h-96 overflow-y-auto font-mono text-sm">
             </div>
         </div>
     </div>
 
     <script type="module">
-        import { crawlAndSaveGame } from './crawler/crazy-games.js';
+        import { crawlAndSaveGame, autoCrawlGames } from './crawler/crazy-games.js';
         
         // Setup global variables
         const logContainer = document.getElementById('logContainer');
         const crawlButton = document.getElementById('crawlButton');
         const gameUrlInput = document.getElementById('gameUrl');
+        const autoCrawlButton = document.getElementById('autoCrawlButton');
+        const stopCrawlButton = document.getElementById('stopCrawlButton');
+        const targetCountInput = document.getElementById('targetCount');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const clearLogButton = document.getElementById('clearLogButton');
+        
         let isCrawling = false;
+        let shouldStop = false;
 
         // Add logging function
         function log(message, type = 'info') {
@@ -55,7 +110,14 @@
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
-        // Add startCrawl function
+        // Update progress
+        function updateProgress(current, total, message) {
+            const percentage = Math.round((current / total) * 100);
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = `${message} (${current}/${total} - ${percentage}%)`;
+        }
+
+        // Start single game crawl
         async function startCrawl() {
             if (isCrawling) return;
             
@@ -73,9 +135,10 @@
             try {
                 isCrawling = true;
                 crawlButton.disabled = true;
+                autoCrawlButton.disabled = true;
                 gameUrlInput.disabled = true;
                 
-                log(`开始采集游戏...`, 'info');
+                log(`开始采集游戏: ${url}`, 'info');
                 const gameId = await crawlAndSaveGame(url);
                 log(`游戏采集成功！ID: ${gameId}`, 'success');
             } catch (error) {
@@ -84,19 +147,104 @@
             } finally {
                 isCrawling = false;
                 crawlButton.disabled = false;
+                autoCrawlButton.disabled = false;
                 gameUrlInput.disabled = false;
             }
         }
 
-        // Add event listener to the button
-        crawlButton.addEventListener('click', startCrawl);
+        // Start auto crawl
+        async function startAutoCrawl() {
+            if (isCrawling) return;
+            
+            const targetCount = parseInt(targetCountInput.value) || 20;
+            
+            try {
+                isCrawling = true;
+                shouldStop = false;
+                crawlButton.disabled = true;
+                autoCrawlButton.disabled = true;
+                autoCrawlButton.style.display = 'none';
+                stopCrawlButton.style.display = 'inline-block';
+                targetCountInput.disabled = true;
+                progressContainer.classList.remove('hidden');
+                
+                log(`🚀 开始自动采集 ${targetCount} 个游戏`, 'info');
+                
+                // 定义日志回调函数
+                const logCallback = (message, type) => {
+                    log(message, type);
+                    
+                    // 更新进度条
+                    if (message.includes('[') && message.includes('/')) {
+                        const match = message.match(/\[(\d+)\/(\d+)\]/);
+                        if (match) {
+                            const current = parseInt(match[1]);
+                            const total = parseInt(match[2]);
+                            updateProgress(current, total, '正在采集游戏');
+                        }
+                    }
+                };
+                
+                const results = await autoCrawlGames(targetCount, logCallback);
+                
+                if (!shouldStop) {
+                    log(`\n🎉 自动采集完成！总结：`, 'success');
+                    log(`✅ 成功采集: ${results.successCount} 个游戏`, 'success');
+                    log(`❌ 采集失败: ${results.failCount} 个游戏`, 'error');
+                    updateProgress(results.successCount, targetCount, '采集完成');
+                } else {
+                    log('❌ 用户手动停止了采集', 'warning');
+                }
+                
+            } catch (error) {
+                log(`自动采集出错: ${error.message}`, 'error');
+                console.error('自动采集错误:', error);
+            } finally {
+                isCrawling = false;
+                shouldStop = false;
+                crawlButton.disabled = false;
+                autoCrawlButton.disabled = false;
+                autoCrawlButton.style.display = 'inline-block';
+                stopCrawlButton.style.display = 'none';
+                targetCountInput.disabled = false;
+                
+                setTimeout(() => {
+                    progressContainer.classList.add('hidden');
+                    progressBar.style.width = '0%';
+                    progressText.textContent = '准备开始...';
+                }, 3000);
+            }
+        }
 
-        // Add event listener for Enter key in the input field
+        // Stop crawling
+        function stopCrawl() {
+            shouldStop = true;
+            log('正在停止采集...', 'warning');
+        }
+
+        // Clear log
+        function clearLog() {
+            logContainer.innerHTML = '';
+            log('日志已清空', 'info');
+        }
+
+        // Event listeners
+        crawlButton.addEventListener('click', startCrawl);
+        autoCrawlButton.addEventListener('click', startAutoCrawl);
+        stopCrawlButton.addEventListener('click', stopCrawl);
+        clearLogButton.addEventListener('click', clearLog);
+
+        // Enter key listener for single game input
         gameUrlInput.addEventListener('keypress', (event) => {
             if (event.key === 'Enter') {
                 startCrawl();
             }
         });
+
+        // Initialize log
+        log('🎮 游戏采集工具已就绪', 'success');
+        log('💡 提示：单个采集请输入完整的游戏详情页URL', 'info');
+        log('🚀 自动采集将从CrazyGames首页智能获取游戏链接', 'info');
     </script>
 </body>
 </html> 
