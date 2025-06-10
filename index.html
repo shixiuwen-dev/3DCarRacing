@@ -104,10 +104,10 @@
                     <p class="mt-2 text-gray-400">Play free online games!</p>
                 </div>
                 <div class="flex space-x-6">
-                    <a href="#" class="text-gray-400 hover:text-white">About</a>
-                    <a href="#" class="text-gray-400 hover:text-white">Privacy</a>
-                    <a href="#" class="text-gray-400 hover:text-white">Terms</a>
-                    <a href="#" class="text-gray-400 hover:text-white">Contact</a>
+                    <a href="/about.html" data-route class="text-gray-400 hover:text-white">About</a>
+                    <a href="/privacy.html" data-route class="text-gray-400 hover:text-white">Privacy</a>
+                    <a href="/terms.html" data-route class="text-gray-400 hover:text-white">Terms</a>
+                    <a href="/contact.html" data-route class="text-gray-400 hover:text-white">Contact</a>
                 </div>
             </div>
             <div class="mt-8 text-center text-gray-400">
@@ -121,6 +121,22 @@
         import { db } from './scripts/firebase-init.js';
         import { initRouter } from './scripts/router.js';
         import { initSearch } from './scripts/search.js';
+        import { doc, updateDoc, increment, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+        // 全局函数：递增游戏播放次数
+        window.incrementPlays = async function(gameId) {
+            try {
+                console.log('Incrementing plays for game:', gameId);
+                const gameRef = doc(db, 'games', gameId);
+                await updateDoc(gameRef, {
+                    plays: increment(1),
+                    lastPlayed: serverTimestamp()
+                });
+                console.log('Plays incremented successfully');
+            } catch (error) {
+                console.error('Error incrementing plays:', error);
+            }
+        };
 
         // 等待 Firebase 初始化完成后再初始化其他功能
         window.addEventListener('DOMContentLoaded', async () => {

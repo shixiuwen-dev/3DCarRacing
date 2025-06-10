@@ -1,4 +1,4 @@
-import { getFirestore, collection, getDocs, query, where, orderBy, limit, startAfter } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getFirestore, collection, getDocs, query, where, orderBy, limit, startAfter, doc, updateDoc, increment, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 import { db } from './firebase-init.js';
 
 const mainContent = document.getElementById('main-content');
@@ -7,7 +7,11 @@ const mainContent = document.getElementById('main-content');
 const routes = {
     '/': showHomePage,
     '/categories': showCategoryPage,
-    '/games': showGamePage
+    '/games': showGamePage,
+    '/about.html': () => loadStaticPage('/about.html'),
+    '/privacy.html': () => loadStaticPage('/privacy.html'),
+    '/terms.html': () => loadStaticPage('/terms.html'),
+    '/contact.html': () => loadStaticPage('/contact.html')
 };
 
 // 初始化路由
@@ -22,6 +26,15 @@ function handleClick(e) {
     if (e.target.matches('a[data-route]')) {
         e.preventDefault();
         const url = e.target.getAttribute('href');
+        
+        // 对于静态页面，直接跳转而不是使用AJAX加载
+        if (url.endsWith('.html')) {
+            console.log('🔗 Navigating to static page:', url);
+            window.location.href = url;
+            return;
+        }
+        
+        // 对于其他路由，使用客户端路由
         history.pushState(null, '', url);
         handleRoute();
     }
@@ -60,6 +73,9 @@ async function handleRoute() {
             } else {
                 showErrorPage('Game not found');
             }
+        } else if (path in routes) {
+            // 处理静态页面路由
+            await routes[path]();
         } else {
             console.log('Unknown route:', path);
             showErrorPage('Page not found');
@@ -68,6 +84,124 @@ async function handleRoute() {
         console.error('Route handling error:', error);
         showErrorPage('An error occurred while loading the page');
     }
+}
+
+// 加载静态页面
+async function loadStaticPage(pagePath) {
+    try {
+        console.log('🌐 Loading static page:', pagePath);
+        const response = await fetch(pagePath);
+        console.log('📥 Response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Failed to load page: ${pagePath} (Status: ${response.status})`);
+        }
+        
+        const html = await response.text();
+        console.log('📄 Received HTML content length:', html.length);
+        console.log('📄 HTML content preview:', html.substring(0, 200));
+        
+        // 尝试两种方法：DOMParser 和 createElement
+        let mainContent = null;
+        
+        // 方法1: 使用DOMParser
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            console.log('🔍 DOMParser - Document parsed successfully');
+            console.log('🔍 DOMParser - Document title:', doc.title);
+            console.log('🔍 DOMParser - Document body exists:', !!doc.body);
+            
+            if (doc.body) {
+                console.log('🔍 DOMParser - Document body children count:', doc.body.children.length);
+                mainContent = doc.querySelector('main');
+                console.log('🔍 DOMParser - Main element found:', !!mainContent);
+            }
+        } catch (domParserError) {
+            console.error('❌ DOMParser failed:', domParserError);
+        }
+        
+        // 方法2: 如果DOMParser失败，使用createElement
+        if (!mainContent) {
+            console.log('🔄 Trying createElement method...');
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            console.log('🔍 createElement - Temp div children count:', tempDiv.children.length);
+            
+            // 查找main元素
+            mainContent = tempDiv.querySelector('main');
+            console.log('🔍 createElement - Main element found:', !!mainContent);
+            
+            if (!mainContent) {
+                // 尝试查找所有可能的容器
+                const possibleContainers = tempDiv.querySelectorAll('body, main, .main-content, #main-content');
+                console.log('🔍 Found possible containers:', possibleContainers.length);
+                possibleContainers.forEach((container, index) => {
+                    console.log(`Container ${index}:`, container.tagName, container.className, container.id);
+                });
+                
+                // 如果找到body，尝试从body中获取main
+                const bodyElement = tempDiv.querySelector('body');
+                if (bodyElement) {
+                    console.log('🔍 Found body element, looking for main inside');
+                    mainContent = bodyElement.querySelector('main');
+                    console.log('🔍 Main inside body found:', !!mainContent);
+                }
+            }
+        }
+        
+        if (mainContent) {
+            console.log('✅ Found main content, updating page');
+            console.log('✅ Main content innerHTML length:', mainContent.innerHTML.length);
+            const targetContainer = document.getElementById('main-content');
+            if (!targetContainer) {
+                throw new Error('Target container #main-content not found');
+            }
+            
+            targetContainer.innerHTML = mainContent.innerHTML;
+            
+            // 如果是联系页面，初始化表单处理
+            if (pagePath === '/contact.html') {
+                console.log('📝 Initializing contact form');
+                // 延迟执行以确保DOM已更新
+                setTimeout(() => {
+                    initContactForm();
+                }, 100);
+            }
+        } else {
+            console.error('❌ Main content not found in the static page with both methods');
+            throw new Error('Main content not found in the static page');
+        }
+    } catch (error) {
+        console.error('❌ Error loading static page:', error);
+        showErrorPage(`Failed to load the page: ${error.message}`);
+    }
+}
+
+// 初始化联系表单
+function initContactForm() {
+    const form = document.getElementById('contact-form');
+    if (!form) {
+        console.error('Contact form not found');
+        return;
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formMessage = document.getElementById('form-message');
+        formMessage.className = 'mt-4 p-4 rounded-lg';
+        formMessage.style.display = 'block';
+        
+        try {
+            // 这里可以添加表单提交逻辑
+            formMessage.className += ' bg-green-500/20 text-green-400';
+            formMessage.textContent = '消息已发送！我们会尽快回复您。';
+        } catch (error) {
+            console.error('Error submitting form:', error);
+            formMessage.className += ' bg-red-500/20 text-red-400';
+            formMessage.textContent = '发送失败，请稍后重试。';
+        }
+    });
 }
 
 // 存储最后一个文档的引用
@@ -570,11 +704,11 @@ async function showGamePage(gameSlug) {
                                             <h3 class="text-lg font-bold line-clamp-1">${game.title}</h3>
                                             <span class="px-2 py-1 bg-gaming-primary/20 rounded text-sm flex-shrink-0 ml-2">${game.category}</span>
                                         </div>
-                                        <p class="text-sm text-gray-300 mt-1 line-clamp-2">${game.description}</p>
-                                        <div class="flex items-center justify-between mt-auto pt-4">
-                                            <span class="text-sm text-gray-400">${game.plays || 0} plays</span>
-                                            <a href="/games/${game.slug}" data-route class="bg-gaming-primary hover:bg-gaming-primary/80 px-4 py-2 rounded-lg transition">Play</a>
-                                        </div>
+                                        <p class="text-sm text-gray-300 mt-1 line-clamp-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${game.description}</p>
+                                                        <div class="flex items-center justify-between mt-auto pt-4">
+                    <span class="text-sm text-gray-400">${game.plays || 0} plays</span>
+                    <a href="/games/${game.slug}" data-route class="bg-gaming-primary hover:bg-gaming-primary/80 px-4 py-2 rounded-lg transition" onclick="incrementPlays('${game.id}')">Play</a>
+                </div>
                                     </div>
                                 </div>
                             `).join('')}
@@ -620,6 +754,8 @@ function formatPlays(plays) {
     return plays.toString();
 }
 
+// incrementPlays函数已在index.html中定义为全局函数
+
 // 创建游戏卡片
 function createGameCard(game) {
     console.log('Creating game card for:', game);
@@ -643,11 +779,11 @@ function createGameCard(game) {
                     <h3 class="text-lg font-bold line-clamp-1">${game.title}</h3>
                     <span class="px-2 py-1 bg-gaming-primary/20 rounded text-sm flex-shrink-0 ml-2">${game.category}</span>
                 </div>
-                <p class="text-sm text-gray-300 mt-1 line-clamp-2">${game.description}</p>
-                <div class="flex items-center justify-between mt-auto pt-4">
-                    <span class="text-sm text-gray-400">${game.plays || 0} plays</span>
-                    <a href="/games/${game.slug}" data-route class="bg-gaming-primary hover:bg-gaming-primary/80 px-4 py-2 rounded-lg transition">Play</a>
-                </div>
+                <p class="text-sm text-gray-300 mt-1 line-clamp-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${game.description}</p>
+                                                        <div class="flex items-center justify-between mt-auto pt-4">
+                                            <span class="text-sm text-gray-400">${game.plays || 0} plays</span>
+                                            <a href="/games/${game.slug}" data-route class="bg-gaming-primary hover:bg-gaming-primary/80 px-4 py-2 rounded-lg transition" onclick="incrementPlays('${game.id}')">Play</a>
+                                        </div>
             </div>
         </div>
     `;
