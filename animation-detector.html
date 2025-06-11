@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrazyGames 动画URL检测器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="max-w-6xl mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8">CrazyGames 动画URL检测器</h1>
+        
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">检测设置</h2>
+            <div class="space-y-4">
+                <div class="flex gap-4 items-center">
+                    <input type="text" id="gameSlug" 
+                           value="cursed-treasure-2"
+                           placeholder="输入游戏slug"
+                           class="flex-1 px-4 py-2 rounded bg-gray-700 text-white border border-gray-600">
+                    <button onclick="testAnimationUrls()" 
+                            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white">
+                        测试动画URL
+                    </button>
+                </div>
+                <div class="text-sm text-gray-400">
+                    这个工具会测试各种可能的动画URL模式，找出哪些可以访问
+                </div>
+                <div class="mt-2 p-3 bg-green-800 rounded text-sm">
+                    <div class="text-green-200 font-bold">✅ 已发现真实的动画URL模式:</div>
+                    <div class="text-green-100 font-mono mt-1">
+                        https://videos.crazygames.com/{game-slug}/1/{game-slug}-landscape-494x276_30fps.mp4
+                    </div>
+                    <div class="text-green-200 mt-1">示例: https://videos.crazygames.com/cursed-treasure-2/1/cursed-treasure-2-landscape-494x276_30fps.mp4</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 测试结果 -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h3 class="text-lg font-bold mb-4">测试结果</h3>
+            <div id="testResults" class="space-y-2">
+                <div class="text-gray-400">点击测试按钮开始检测...</div>
+            </div>
+        </div>
+        
+        <!-- 网络监控 -->
+        <div class="bg-gray-800 rounded-lg p-6">
+            <h3 class="text-lg font-bold mb-4">网络请求监控</h3>
+            <div class="space-y-2">
+                <button onclick="startNetworkMonitoring()" 
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-white mr-2">
+                    开始监控
+                </button>
+                <button onclick="stopNetworkMonitoring()" 
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded text-white mr-2">
+                    停止监控
+                </button>
+                <button onclick="clearNetworkLog()" 
+                        class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded text-white">
+                    清空日志
+                </button>
+            </div>
+            <div id="networkLog" class="mt-4 max-h-96 overflow-y-auto bg-gray-700 p-4 rounded text-sm font-mono">
+                网络请求将在这里显示...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let networkMonitoring = false;
+        let originalFetch = null;
+        let originalXMLHttpRequest = null;
+        
+        async function testAnimationUrls() {
+            const gameSlug = document.getElementById('gameSlug').value.trim();
+            if (!gameSlug) {
+                alert('请输入游戏slug');
+                return;
+            }
+            
+            const testResults = document.getElementById('testResults');
+            testResults.innerHTML = '<div class="text-blue-400">正在测试动画URL...</div>';
+            
+            // 真实的CrazyGames动画URL模式（放在最前面优先测试）
+            const animationUrlPatterns = [
+                // 真实发现的模式 - videos.crazygames.com
+                `https://videos.crazygames.com/${gameSlug}/1/${gameSlug}-landscape-494x276_30fps.mp4`,
+                `https://videos.crazygames.com/${gameSlug}/1/${gameSlug}-portrait-494x276_30fps.mp4`,
+                `https://videos.crazygames.com/${gameSlug}/1/${gameSlug}-landscape-640x360_30fps.mp4`,
+                `https://videos.crazygames.com/${gameSlug}/1/${gameSlug}-landscape-854x480_30fps.mp4`,
+                `https://videos.crazygames.com/${gameSlug}/1/${gameSlug}-square-494x494_30fps.mp4`,
+                // 其他可能的变体
+                `https://videos.crazygames.com/${gameSlug}/2/${gameSlug}-landscape-494x276_30fps.mp4`,
+                `https://videos.crazygames.com/${gameSlug}/3/${gameSlug}-landscape-494x276_30fps.mp4`,
+                `https://videos.crazygames.com/${gameSlug}/${gameSlug}-landscape-494x276_30fps.mp4`,
+                `https://videos.crazygames.com/${gameSlug}/preview.mp4`,
+                `https://videos.crazygames.com/${gameSlug}/hover.mp4`,
+                // 以下是之前推测的模式（已确认无效，但保留用于对比）
+                `https://files.crazygames.com/games/${gameSlug}/preview.mp4`,
+                `https://files.crazygames.com/games/${gameSlug}/hover.mp4`,
+                `https://cdn.crazygames.com/games/${gameSlug}/preview.mp4`,
+                `https://media.crazygames.com/games/${gameSlug}/preview.mp4`
+            ];
+            
+            let results = '';
+            let foundCount = 0;
+            
+            for (let i = 0; i < animationUrlPatterns.length; i++) {
+                const url = animationUrlPatterns[i];
+                
+                try {
+                    // 使用HEAD请求检查资源是否存在
+                    const response = await fetch(url, { 
+                        method: 'HEAD',
+                        mode: 'no-cors' // 避免CORS问题
+                    });
+                    
+                    // 对于no-cors请求，我们无法检查状态码，所以尝试不同方法
+                    results += `<div class="text-green-400">✓ 可能可用: ${url}</div>`;
+                    foundCount++;
+                    
+                } catch (error) {
+                    results += `<div class="text-red-400">✗ 不可用: ${url}</div>`;
+                }
+                
+                // 更新进度
+                testResults.innerHTML = `
+                    <div class="text-blue-400">测试进度: ${i + 1}/${animationUrlPatterns.length}</div>
+                    <div class="text-green-400">找到可能的URL: ${foundCount} 个</div>
+                    <div class="mt-4 max-h-64 overflow-y-auto">${results}</div>
+                `;
+                
+                // 添加小延迟避免请求过快
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            testResults.innerHTML = `
+                <div class="text-blue-400 font-bold">测试完成!</div>
+                <div class="text-green-400">找到可能的URL: ${foundCount} 个</div>
+                <div class="mt-4 max-h-64 overflow-y-auto">${results}</div>
+            `;
+        }
+        
+        function startNetworkMonitoring() {
+            if (networkMonitoring) return;
+            
+            networkMonitoring = true;
+            const networkLog = document.getElementById('networkLog');
+            
+            // 监控 fetch 请求
+            if (!originalFetch) {
+                originalFetch = window.fetch;
+                window.fetch = function(...args) {
+                    const url = args[0];
+                    if (typeof url === 'string' && (url.includes('.mp4') || url.includes('.gif') || url.includes('.webm'))) {
+                        logNetworkRequest('FETCH', url);
+                    }
+                    return originalFetch.apply(this, args);
+                };
+            }
+            
+            // 监控 XMLHttpRequest
+            if (!originalXMLHttpRequest) {
+                originalXMLHttpRequest = window.XMLHttpRequest;
+                window.XMLHttpRequest = function() {
+                    const xhr = new originalXMLHttpRequest();
+                    const originalOpen = xhr.open;
+                    
+                    xhr.open = function(method, url, ...rest) {
+                        if (typeof url === 'string' && (url.includes('.mp4') || url.includes('.gif') || url.includes('.webm'))) {
+                            logNetworkRequest('XHR', url);
+                        }
+                        return originalOpen.call(this, method, url, ...rest);
+                    };
+                    
+                    return xhr;
+                };
+            }
+            
+            networkLog.innerHTML = '<div class="text-green-400">网络监控已启动，正在监听动画文件请求...</div>';
+            
+            function logNetworkRequest(type, url) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = `<div class="text-yellow-400">[${timestamp}] ${type}: ${url}</div>`;
+                networkLog.innerHTML += logEntry;
+                networkLog.scrollTop = networkLog.scrollHeight;
+            }
+        }
+        
+        function stopNetworkMonitoring() {
+            if (!networkMonitoring) return;
+            
+            networkMonitoring = false;
+            
+            // 恢复原始函数
+            if (originalFetch) {
+                window.fetch = originalFetch;
+                originalFetch = null;
+            }
+            
+            if (originalXMLHttpRequest) {
+                window.XMLHttpRequest = originalXMLHttpRequest;
+                originalXMLHttpRequest = null;
+            }
+            
+            const networkLog = document.getElementById('networkLog');
+            networkLog.innerHTML += '<div class="text-red-400">网络监控已停止</div>';
+        }
+        
+        function clearNetworkLog() {
+            const networkLog = document.getElementById('networkLog');
+            networkLog.innerHTML = '网络请求将在这里显示...';
+        }
+        
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', stopNetworkMonitoring);
+    </script>
+</body>
+</html> 

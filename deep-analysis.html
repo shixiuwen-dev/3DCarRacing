@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrazyGames 深度分析工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="max-w-6xl mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8">CrazyGames 深度分析工具</h1>
+        
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">分析设置</h2>
+            <div class="space-y-4">
+                <div class="flex gap-4 items-center">
+                    <input type="text" id="urlInput" 
+                           value="https://www.crazygames.com/c/action"
+                           placeholder="输入CrazyGames页面URL"
+                           class="flex-1 px-4 py-2 rounded bg-gray-700 text-white border border-gray-600">
+                    <button onclick="deepAnalyze()" 
+                            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white">
+                        深度分析
+                    </button>
+                </div>
+                <div class="flex gap-4 items-center">
+                    <label class="text-sm">查找特定游戏:</label>
+                    <input type="text" id="specificGame" 
+                           value="cursed-treasure-2"
+                           placeholder="游戏slug"
+                           class="px-3 py-1 rounded bg-gray-700 text-white border border-gray-600">
+                    <button onclick="searchSpecificGame()" 
+                            class="px-4 py-1 bg-green-600 hover:bg-green-700 rounded text-white text-sm">
+                        查找游戏
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 特定游戏搜索结果 -->
+        <div id="specificGameResult" class="bg-gray-800 rounded-lg p-6 mb-8" style="display: none;">
+            <h3 class="text-lg font-bold mb-4">特定游戏搜索结果</h3>
+            <div id="specificGameContent" class="text-sm font-mono">
+                <!-- 内容将动态填充 -->
+            </div>
+        </div>
+        
+        <!-- HTML原始内容分析 -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h3 class="text-lg font-bold mb-4">HTML原始内容分析</h3>
+            <div id="htmlRawAnalysis" class="text-sm font-mono max-h-96 overflow-y-auto bg-gray-700 p-4 rounded">
+                <div>等待分析...</div>
+            </div>
+        </div>
+        
+        <!-- 所有游戏链接 -->
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h3 class="text-lg font-bold mb-4">详细游戏链接分析</h3>
+            <div id="allGameLinks" class="text-sm font-mono max-h-96 overflow-y-auto">
+                <div>等待分析...</div>
+            </div>
+        </div>
+        
+        <!-- JavaScript代码分析 -->
+        <div class="bg-gray-800 rounded-lg p-6">
+            <h3 class="text-lg font-bold mb-4">JavaScript代码分析</h3>
+            <div id="jsAnalysis" class="text-sm font-mono max-h-96 overflow-y-auto bg-gray-700 p-4 rounded">
+                <div>等待分析...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentHtml = '';
+        let currentDoc = null;
+        
+        async function deepAnalyze() {
+            const url = document.getElementById('urlInput').value.trim();
+            if (!url) {
+                alert('请输入URL');
+                return;
+            }
+            
+            const htmlRawAnalysis = document.getElementById('htmlRawAnalysis');
+            const allGameLinks = document.getElementById('allGameLinks');
+            const jsAnalysis = document.getElementById('jsAnalysis');
+            
+            // 清空之前的结果
+            htmlRawAnalysis.innerHTML = '<div class="text-blue-400">正在分析...</div>';
+            allGameLinks.innerHTML = '<div class="text-blue-400">正在分析...</div>';
+            jsAnalysis.innerHTML = '<div class="text-blue-400">正在分析...</div>';
+            
+            try {
+                // 通过代理获取页面
+                const proxyUrl = `http://localhost:3007/proxy?url=${encodeURIComponent(url)}`;
+                const response = await fetch(proxyUrl);
+                currentHtml = await response.text();
+                
+                // 解析HTML
+                const parser = new DOMParser();
+                currentDoc = parser.parseFromString(currentHtml, 'text/html');
+                
+                // HTML原始内容分析
+                analyzeRawHtml();
+                
+                // 游戏链接分析
+                analyzeGameLinks();
+                
+                // JavaScript分析
+                analyzeJavaScript();
+                
+            } catch (error) {
+                const errorMsg = `分析失败: ${error.message}`;
+                htmlRawAnalysis.innerHTML = `<div class="text-red-400">${errorMsg}</div>`;
+                allGameLinks.innerHTML = `<div class="text-red-400">${errorMsg}</div>`;
+                jsAnalysis.innerHTML = `<div class="text-red-400">${errorMsg}</div>`;
+                console.error('深度分析错误:', error);
+            }
+        }
+        
+        function analyzeRawHtml() {
+            const htmlRawAnalysis = document.getElementById('htmlRawAnalysis');
+            
+            // 统计信息
+            const htmlLength = currentHtml.length;
+            const gameOccurrences = (currentHtml.match(/\/game\//g) || []).length;
+            const hrefOccurrences = (currentHtml.match(/href/g) || []).length;
+            
+            // 查找所有包含game的行
+            const lines = currentHtml.split('\n');
+            const gameLines = lines.filter((line, index) => 
+                line.includes('/game/') || line.includes('game-') || line.includes('data-game')
+            );
+            
+            let result = `
+                <div><span class="text-green-400">HTML总长度:</span> ${htmlLength.toLocaleString()} 字符</div>
+                <div><span class="text-green-400">/game/ 出现次数:</span> ${gameOccurrences} 次</div>
+                <div><span class="text-green-400">href 出现次数:</span> ${hrefOccurrences} 次</div>
+                <div><span class="text-green-400">包含游戏的行数:</span> ${gameLines.length} 行</div>
+                <div class="mt-4 text-gray-400">包含游戏的HTML行:</div>
+            `;
+            
+            gameLines.slice(0, 20).forEach((line, index) => {
+                const trimmedLine = line.trim().substring(0, 200);
+                result += `<div class="text-xs text-gray-300 mt-1">${index + 1}: ${trimmedLine}...</div>`;
+            });
+            
+            if (gameLines.length > 20) {
+                result += `<div class="text-yellow-400 mt-2">... 还有 ${gameLines.length - 20} 行</div>`;
+            }
+            
+            htmlRawAnalysis.innerHTML = result;
+        }
+        
+        function analyzeGameLinks() {
+            const allGameLinks = document.getElementById('allGameLinks');
+            
+            // 使用多种方法查找游戏链接
+            const methods = {
+                'DOM选择器 a[href*="/game/"]': () => {
+                    return Array.from(currentDoc.querySelectorAll('a[href*="/game/"]')).map(a => a.href);
+                },
+                '正则表达式 href="[^"]*\/game\/[^"]*"': () => {
+                    const matches = currentHtml.match(/href="[^"]*\/game\/[^"]*"/g) || [];
+                    return matches.map(m => m.substring(6, m.length - 1));
+                },
+                '正则表达式 \/game\/[a-z0-9\-]+': () => {
+                    const matches = currentHtml.match(/\/game\/[a-z0-9\-]+/g) || [];
+                    return matches.map(m => 'https://www.crazygames.com' + m);
+                },
+                '搜索所有包含game的URL片段': () => {
+                    const matches = currentHtml.match(/[a-zA-Z0-9\-\.\/]+game[a-zA-Z0-9\-\.\/]*/g) || [];
+                    return matches.filter(m => m.includes('/game/')).map(m => {
+                        if (m.startsWith('/')) return 'https://www.crazygames.com' + m;
+                        if (m.includes('crazygames.com')) return 'https://' + m;
+                        return m;
+                    });
+                }
+            };
+            
+            let result = '';
+            const allFoundLinks = new Set();
+            
+            Object.entries(methods).forEach(([methodName, methodFunc]) => {
+                try {
+                    const links = methodFunc();
+                    result += `<div class="text-yellow-400 font-bold mt-4">${methodName}: ${links.length} 个链接</div>`;
+                    
+                    links.slice(0, 10).forEach((link, index) => {
+                        allFoundLinks.add(link);
+                        result += `<div class="text-green-400 text-xs ml-4">${index + 1}. ${link}</div>`;
+                    });
+                    
+                    if (links.length > 10) {
+                        result += `<div class="text-gray-400 text-xs ml-4">... 还有 ${links.length - 10} 个</div>`;
+                    }
+                } catch (error) {
+                    result += `<div class="text-red-400">${methodName}: 错误 - ${error.message}</div>`;
+                }
+            });
+            
+            result += `<div class="text-blue-400 font-bold mt-4">所有方法共找到唯一链接: ${allFoundLinks.size} 个</div>`;
+            
+            allGameLinks.innerHTML = result;
+        }
+        
+        function analyzeJavaScript() {
+            const jsAnalysis = document.getElementById('jsAnalysis');
+            
+            const scripts = currentDoc.querySelectorAll('script');
+            let result = `<div><span class="text-green-400">脚本数量:</span> ${scripts.length} 个</div>`;
+            
+            let gameRelatedScripts = 0;
+            scripts.forEach((script, index) => {
+                const content = script.textContent || script.innerHTML;
+                if (content && (content.includes('game') || content.includes('Game'))) {
+                    gameRelatedScripts++;
+                    result += `<div class="text-yellow-400 mt-2">脚本 ${index + 1} (包含游戏相关代码):</div>`;
+                    
+                    // 提取游戏相关的行
+                    const lines = content.split('\n');
+                    const gameLines = lines.filter(line => 
+                        line.includes('game') || line.includes('Game') || line.includes('/game/')
+                    );
+                    
+                    gameLines.slice(0, 5).forEach(line => {
+                        const trimmed = line.trim().substring(0, 150);
+                        if (trimmed) {
+                            result += `<div class="text-xs text-gray-300 ml-4">${trimmed}...</div>`;
+                        }
+                    });
+                    
+                    if (gameLines.length > 5) {
+                        result += `<div class="text-gray-400 text-xs ml-4">... 还有 ${gameLines.length - 5} 行</div>`;
+                    }
+                }
+            });
+            
+            result += `<div class="text-blue-400 mt-2">包含游戏相关代码的脚本: ${gameRelatedScripts} 个</div>`;
+            
+            jsAnalysis.innerHTML = result;
+        }
+        
+        async function searchSpecificGame() {
+            if (!currentHtml) {
+                alert('请先进行深度分析');
+                return;
+            }
+            
+            const gameName = document.getElementById('specificGame').value.trim();
+            if (!gameName) {
+                alert('请输入游戏名称');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('specificGameResult');
+            const contentDiv = document.getElementById('specificGameContent');
+            
+            resultDiv.style.display = 'block';
+            
+            // 搜索特定游戏
+            const found = currentHtml.includes(gameName);
+            const caseSensitive = (currentHtml.match(new RegExp(gameName, 'g')) || []).length;
+            const caseInsensitive = (currentHtml.match(new RegExp(gameName, 'gi')) || []).length;
+            
+            let result = `
+                <div><span class="text-green-400">游戏名称:</span> ${gameName}</div>
+                <div><span class="text-green-400">是否存在:</span> ${found ? 'Yes' : 'No'}</div>
+                <div><span class="text-green-400">区分大小写匹配:</span> ${caseSensitive} 次</div>
+                <div><span class="text-green-400">不区分大小写匹配:</span> ${caseInsensitive} 次</div>
+            `;
+            
+            if (found) {
+                // 找到包含该游戏的所有行
+                const lines = currentHtml.split('\n');
+                const matchingLines = lines.filter((line, index) => 
+                    line.toLowerCase().includes(gameName.toLowerCase())
+                );
+                
+                result += `<div class="text-yellow-400 mt-4">包含 "${gameName}" 的行 (${matchingLines.length} 行):</div>`;
+                
+                matchingLines.slice(0, 10).forEach((line, index) => {
+                    const trimmed = line.trim();
+                    // 高亮显示游戏名称
+                    const highlighted = trimmed.replace(
+                        new RegExp(gameName, 'gi'), 
+                        `<span class="bg-yellow-600 text-black">${gameName}</span>`
+                    );
+                    result += `<div class="text-xs text-gray-300 mt-1 border-l-2 border-gray-600 pl-2">${highlighted}</div>`;
+                });
+                
+                if (matchingLines.length > 10) {
+                    result += `<div class="text-gray-400 mt-2">... 还有 ${matchingLines.length - 10} 行</div>`;
+                }
+                
+                // 检查是否有完整的游戏URL
+                const gameUrlPattern = new RegExp(`/game/${gameName}`, 'gi');
+                const urlMatches = currentHtml.match(gameUrlPattern) || [];
+                result += `<div class="text-blue-400 mt-4">完整游戏URL匹配: ${urlMatches.length} 次</div>`;
+                
+                if (urlMatches.length > 0) {
+                    result += `<div class="text-green-400">✓ 找到完整的游戏URL: https://www.crazygames.com/game/${gameName}</div>`;
+                } else {
+                    result += `<div class="text-red-400">✗ 未找到完整的游戏URL</div>`;
+                }
+            }
+            
+            contentDiv.innerHTML = result;
+        }
+    </script>
+</body>
+</html> 

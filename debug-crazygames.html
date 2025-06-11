@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CrazyGames 页面分析工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="max-w-6xl mx-auto p-8">
+        <h1 class="text-3xl font-bold mb-8">CrazyGames 页面分析工具</h1>
+        
+        <div class="bg-gray-800 rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">输入要分析的页面</h2>
+            <div class="flex gap-4 items-center">
+                <input type="text" id="urlInput" 
+                       value="https://www.crazygames.com/c/action"
+                       placeholder="输入CrazyGames页面URL"
+                       class="flex-1 px-4 py-2 rounded bg-gray-700 text-white border border-gray-600">
+                <button onclick="analyzePage()" 
+                        class="px-6 py-2 bg-blue-600 hover:bg-blue-700 rounded text-white">
+                    分析页面
+                </button>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- 基本信息 -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h3 class="text-lg font-bold mb-4">页面基本信息</h3>
+                <div id="basicInfo" class="space-y-2 text-sm font-mono">
+                    <div>等待分析...</div>
+                </div>
+            </div>
+            
+            <!-- 链接统计 -->
+            <div class="bg-gray-800 rounded-lg p-6">
+                <h3 class="text-lg font-bold mb-4">链接统计</h3>
+                <div id="linkStats" class="space-y-2 text-sm font-mono">
+                    <div>等待分析...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 找到的游戏链接 -->
+        <div class="bg-gray-800 rounded-lg p-6 mt-8">
+            <h3 class="text-lg font-bold mb-4">找到的游戏链接</h3>
+            <div id="gameLinks" class="space-y-1 text-sm font-mono max-h-96 overflow-y-auto">
+                <div>等待分析...</div>
+            </div>
+        </div>
+        
+        <!-- HTML结构分析 -->
+        <div class="bg-gray-800 rounded-lg p-6 mt-8">
+            <h3 class="text-lg font-bold mb-4">HTML结构分析</h3>
+            <div id="htmlAnalysis" class="text-sm font-mono max-h-96 overflow-y-auto bg-gray-700 p-4 rounded">
+                <div>等待分析...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function analyzePage() {
+            const url = document.getElementById('urlInput').value.trim();
+            if (!url) {
+                alert('请输入URL');
+                return;
+            }
+            
+            const basicInfo = document.getElementById('basicInfo');
+            const linkStats = document.getElementById('linkStats');
+            const gameLinks = document.getElementById('gameLinks');
+            const htmlAnalysis = document.getElementById('htmlAnalysis');
+            
+            // 清空之前的结果
+            basicInfo.innerHTML = '<div class="text-blue-400">正在分析...</div>';
+            linkStats.innerHTML = '<div class="text-blue-400">正在分析...</div>';
+            gameLinks.innerHTML = '<div class="text-blue-400">正在分析...</div>';
+            htmlAnalysis.innerHTML = '<div class="text-blue-400">正在分析...</div>';
+            
+            try {
+                // 通过代理获取页面
+                const proxyUrl = `http://localhost:3007/proxy?url=${encodeURIComponent(url)}`;
+                const response = await fetch(proxyUrl);
+                const html = await response.text();
+                
+                // 解析HTML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // 基本信息
+                const title = doc.title || 'No title';
+                const htmlLength = html.length;
+                const allLinks = doc.querySelectorAll('a').length;
+                const allImages = doc.querySelectorAll('img').length;
+                
+                basicInfo.innerHTML = `
+                    <div><span class="text-green-400">页面标题:</span> ${title}</div>
+                    <div><span class="text-green-400">HTML长度:</span> ${htmlLength.toLocaleString()} 字符</div>
+                    <div><span class="text-green-400">总链接数:</span> ${allLinks}</div>
+                    <div><span class="text-green-400">总图片数:</span> ${allImages}</div>
+                    <div><span class="text-green-400">响应状态:</span> ${response.status}</div>
+                `;
+                
+                // 分析游戏链接
+                const gameLinksFound = [];
+                const linkSelectors = [
+                    'a[href*="/game/"]',
+                    '[href*="/game/"]'
+                ];
+                
+                                 // 使用正则表达式查找
+                 const regexMatches = html.match(/href="[^"]*\/game\/[^"]*"/g) || [];
+                 
+                 // 使用选择器查找
+                 const selectorMatches = [];
+                 linkSelectors.forEach(selector => {
+                     const elements = doc.querySelectorAll(selector);
+                     elements.forEach(el => {
+                         const href = el.getAttribute('href');
+                         if (href && href.includes('/game/')) {
+                             selectorMatches.push(href);
+                         }
+                     });
+                 });
+                 
+                 // 专门查找 cursed-treasure-2
+                 const cursedTreasureFound = html.includes('cursed-treasure-2');
+                 const cursedTreasureRegex = html.match(/[^"]*cursed-treasure-2[^"]*/g) || [];
+                 
+                 console.log('🔍 专门查找 cursed-treasure-2:');
+                 console.log('HTML中是否包含:', cursedTreasureFound);
+                 console.log('正则匹配结果:', cursedTreasureRegex);
+                
+                // 清理和合并链接
+                const allGameLinks = [...regexMatches, ...selectorMatches];
+                const cleanGameLinks = [];
+                
+                allGameLinks.forEach(link => {
+                    let cleanLink = link;
+                    if (cleanLink.startsWith('href="')) {
+                        cleanLink = cleanLink.substring(6, cleanLink.length - 1);
+                    }
+                    if (cleanLink.startsWith('/')) {
+                        cleanLink = 'https://www.crazygames.com' + cleanLink;
+                    }
+                    if (!cleanGameLinks.includes(cleanLink) && cleanLink.includes('/game/')) {
+                        cleanGameLinks.push(cleanLink);
+                    }
+                });
+                
+                                 // 链接统计
+                 linkStats.innerHTML = `
+                     <div><span class="text-green-400">正则表达式找到:</span> ${regexMatches.length} 个</div>
+                     <div><span class="text-green-400">选择器找到:</span> ${selectorMatches.length} 个</div>
+                     <div><span class="text-green-400">去重后总计:</span> ${cleanGameLinks.length} 个</div>
+                     <div><span class="text-green-400">包含/game/的链接:</span> ${cleanGameLinks.filter(l => l.includes('/game/')).length} 个</div>
+                     <div><span class="text-yellow-400">包含cursed-treasure-2:</span> ${cursedTreasureFound ? 'Yes' : 'No'}</div>
+                     <div><span class="text-yellow-400">cursed-treasure-2匹配:</span> ${cursedTreasureRegex.length} 个</div>
+                 `;
+                
+                // 显示游戏链接
+                if (cleanGameLinks.length > 0) {
+                    gameLinks.innerHTML = cleanGameLinks.map((link, index) => 
+                        `<div class="text-green-400">${index + 1}. ${link}</div>`
+                    ).join('');
+                } else {
+                    gameLinks.innerHTML = '<div class="text-red-400">未找到任何游戏链接</div>';
+                }
+                
+                // HTML结构分析
+                const bodyContent = doc.body ? doc.body.innerHTML.substring(0, 2000) : 'No body found';
+                const scripts = doc.querySelectorAll('script').length;
+                const divs = doc.querySelectorAll('div').length;
+                const articles = doc.querySelectorAll('article').length;
+                const gameClasses = doc.querySelectorAll('[class*="game"]').length;
+                
+                htmlAnalysis.innerHTML = `
+                    <div><span class="text-green-400">脚本数量:</span> ${scripts}</div>
+                    <div><span class="text-green-400">DIV元素:</span> ${divs}</div>
+                    <div><span class="text-green-400">ARTICLE元素:</span> ${articles}</div>
+                    <div><span class="text-green-400">包含'game'的class:</span> ${gameClasses}</div>
+                    <div class="mt-4 text-gray-400">页面内容预览 (前2000字符):</div>
+                    <div class="mt-2 text-xs text-gray-300 whitespace-pre-wrap">${bodyContent.substring(0, 2000)}...</div>
+                `;
+                
+            } catch (error) {
+                const errorMsg = `分析失败: ${error.message}`;
+                basicInfo.innerHTML = `<div class="text-red-400">${errorMsg}</div>`;
+                linkStats.innerHTML = `<div class="text-red-400">${errorMsg}</div>`;
+                gameLinks.innerHTML = `<div class="text-red-400">${errorMsg}</div>`;
+                htmlAnalysis.innerHTML = `<div class="text-red-400">${errorMsg}</div>`;
+                console.error('分析错误:', error);
+            }
+        }
+    </script>
+</body>
+</html> 

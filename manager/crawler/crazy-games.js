@@ -229,6 +229,77 @@ async function fetchGameData(url) {
             console.log('未找到播放次数，生成随机数:', plays);
         }
         
+        // 尝试查找悬停动画 - 从页面HTML中搜索真实URL
+        let hoverAnimation = null;
+        
+        // 1. 从页面HTML中搜索符合CrazyGames动画URL模式的链接
+        const gameSlug = url.split('/game/')[1];
+        console.log('开始搜索动画URL，游戏slug:', gameSlug);
+        
+        // 搜索符合模式的URL：https://videos.crazygames.com/...494x276_30fps.mp4
+        const animationUrlPattern = /https:\/\/videos\.crazygames\.com\/[^"'\s]*494x276_30fps\.mp4/g;
+        const htmlContent = html || '';
+        const foundAnimationUrls = htmlContent.match(animationUrlPattern);
+        
+        if (foundAnimationUrls && foundAnimationUrls.length > 0) {
+            // 如果找到多个，优先选择包含游戏slug的
+            let bestMatch = foundAnimationUrls[0];
+            if (gameSlug) {
+                const matchWithSlug = foundAnimationUrls.find(url => url.includes(gameSlug));
+                if (matchWithSlug) {
+                    bestMatch = matchWithSlug;
+                }
+            }
+            hoverAnimation = bestMatch;
+            console.log('从页面HTML中找到动画URL:', hoverAnimation);
+        } else {
+            console.log('未在页面HTML中找到符合模式的动画URL');
+        }
+        
+        // 2. 如果还没找到，尝试搜索其他可能的动画URL模式（作为备用）
+        if (!hoverAnimation) {
+            console.log('尝试搜索其他动画URL模式...');
+            const otherAnimationPatterns = [
+                // 查找其他可能的CrazyGames动画URL
+                /https:\/\/videos\.crazygames\.com\/[^"'\s]*\.mp4/g,
+                // 查找其他MP4 URL
+                /https?:\/\/[^"'\s]*preview[^"'\s]*\.mp4/g,
+                /https?:\/\/[^"'\s]*hover[^"'\s]*\.mp4/g,
+                /https?:\/\/[^"'\s]*animation[^"'\s]*\.mp4/g
+            ];
+            
+            for (const pattern of otherAnimationPatterns) {
+                const matches = htmlContent.match(pattern);
+                if (matches && matches.length > 0) {
+                    // 过滤出最可能的动画URL
+                    const relevantMatches = matches.filter(url => 
+                        url.includes('videos.crazygames.com') ||
+                        (gameSlug && url.includes(gameSlug)) || 
+                        url.includes('preview') || 
+                        url.includes('hover') ||
+                        url.includes('animation')
+                    );
+                    
+                    if (relevantMatches.length > 0) {
+                        hoverAnimation = relevantMatches[0];
+                        console.log('从备用模式找到动画URL:', hoverAnimation);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // 3. 最终检查：如果仍未找到，记录日志并设置为null
+        if (!hoverAnimation) {
+            console.log('所有方法均未找到动画URL，hoverAnimation将设置为null');
+        }
+        
+        if (hoverAnimation) {
+            console.log('✅ 最终悬停动画URL:', hoverAnimation);
+        } else {
+            console.log('❌ 未找到悬停动画，将设置为null');
+        }
+        
         // 生成 slug
         const slug = title.toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
@@ -244,7 +315,8 @@ async function fetchGameData(url) {
             howToPlay,
             features,
             sourceUrl: url,
-            plays
+            plays,
+            hoverAnimation
         };
     } catch (error) {
         console.error('获取游戏数据失败:', error);
@@ -316,35 +388,190 @@ async function getGameLinksFromUrl(sourceUrl = 'https://www.crazygames.com/') {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         
-        // 查找游戏链接 - 更精确的选择器
+        // 查找游戏链接 - 更全面的选择器
         const gameLinks = [];
         const linkSelectors = [
             'a[href*="/game/"]',
-            '[href*="/game/"]'
+            '[href*="/game/"]',
+            '.game-link',
+            '.game-card a',
+            '.game-item a',
+            '[class*="game"] a',
+            'article a',
+            '.grid a[href*="/game/"]',
+            '.list a[href*="/game/"]'
         ];
+        
+        console.log('开始分析页面中的游戏链接...');
+        console.log('HTML内容前1000字符:', html.substring(0, 1000));
+        
+        // 先尝试查找任何包含"/game/"的链接
+        const allLinksWithGame = html.match(/href="[^"]*\/game\/[^"]*"/g);
+        if (allLinksWithGame) {
+            console.log(`通过正则表达式在HTML中找到 ${allLinksWithGame.length} 个包含/game/的链接`);
+            allLinksWithGame.slice(0, 10).forEach((match, index) => {
+                console.log(`正则匹配 ${index + 1}: ${match}`);
+            });
+        }
         
         for (const selector of linkSelectors) {
             const links = doc.querySelectorAll(selector);
-            console.log(`使用选择器 "${selector}" 找到 ${links.length} 个链接`);
+            console.log(`使用选择器 "${selector}" 找到 ${links.length} 个元素`);
             
             for (const link of links) {
-                const href = link.getAttribute('href');
+                const href = link.getAttribute('href') || link.href;
                 if (href && href.includes('/game/')) {
                     let fullUrl = href;
                     if (href.startsWith('/')) {
                         fullUrl = 'https://www.crazygames.com' + href;
                     }
                     
-                    // 确保链接格式正确 - 必须是游戏详情页
-                    if (fullUrl.match(/https:\/\/www\.crazygames\.com\/game\/[^\/]+$/)) {
-                        if (!gameLinks.includes(fullUrl)) {
-                            gameLinks.push(fullUrl);
-                            console.log(`添加游戏链接: ${fullUrl}`);
+                    // 放宽链接格式验证，允许更多格式
+                    if (fullUrl.includes('crazygames.com/game/') && !fullUrl.includes('#')) {
+                        // 清理URL，移除查询参数
+                        const cleanUrl = fullUrl.split('?')[0].split('#')[0];
+                        if (!gameLinks.includes(cleanUrl)) {
+                            gameLinks.push(cleanUrl);
+                            console.log(`添加游戏链接: ${cleanUrl}`);
                         }
                     }
                 }
             }
         }
+        
+        // 尝试更全面的正则表达式解析
+        console.log('使用多种正则表达式模式搜索游戏链接...');
+        const regexPatterns = [
+            /href="([^"]*\/game\/[^"]*?)"/g,           // 标准的href属性
+            /href='([^']*\/game\/[^']*?)'/g,           // 单引号href
+            /"([^"]*\/game\/[^"]*?)"/g,                // 任何双引号内的game链接
+            /'([^']*\/game\/[^']*?)'/g,                // 任何单引号内的game链接
+            /\/game\/([a-z0-9\-]+)/g                   // 直接匹配/game/slug模式
+        ];
+        
+        regexPatterns.forEach((pattern, index) => {
+            let match;
+            while ((match = pattern.exec(html)) !== null) {
+                let gameUrl = match[1] || match[0];
+                
+                // 确保是完整的URL路径
+                if (gameUrl.startsWith('/game/')) {
+                    gameUrl = 'https://www.crazygames.com' + gameUrl;
+                } else if (gameUrl.startsWith('game/')) {
+                    gameUrl = 'https://www.crazygames.com/' + gameUrl;
+                } else if (!gameUrl.startsWith('http') && gameUrl.includes('/game/')) {
+                    // 提取/game/部分
+                    const gameMatch = gameUrl.match(/\/game\/[^\/\s"']+/);
+                    if (gameMatch) {
+                        gameUrl = 'https://www.crazygames.com' + gameMatch[0];
+                    }
+                }
+                
+                // 清理URL
+                const cleanUrl = gameUrl.split('?')[0].split('#')[0];
+                if (cleanUrl.includes('crazygames.com/game/') && !gameLinks.includes(cleanUrl)) {
+                    gameLinks.push(cleanUrl);
+                    console.log(`模式${index + 1}添加游戏链接: ${cleanUrl}`);
+                }
+            }
+        });
+        
+        // 从JavaScript数据中提取游戏信息
+        console.log('从JavaScript数据中查找游戏...');
+        const jsDataPatterns = [
+            // 查找JSON数据中的游戏信息
+            /"slug"\s*:\s*"([^"]+)"/g,
+            /"name"\s*:\s*"([^"]+)"/g,
+            /game[_-]?slug['"]\s*:\s*['"]([^'"]+)['"]/gi,
+            /game[_-]?id['"]\s*:\s*['"]([^'"]+)['"]/gi,
+            // 查找游戏名称模式
+            /['"]([\w\-]+(?:\-\d+)?)['"]\s*:\s*\{[^}]*game/gi,
+            // 查找游戏slug的各种变体
+            /['"]([a-z0-9\-]+)['"]\s*,\s*['"]([a-z0-9\-]+)['"].*?game/gi
+        ];
+        
+        const foundGameSlugs = new Set();
+        
+        jsDataPatterns.forEach((pattern, index) => {
+            let match;
+            while ((match = pattern.exec(html)) !== null) {
+                const slug = match[1];
+                if (slug && slug.length > 2 && slug.includes('-') && !slug.includes(' ')) {
+                    foundGameSlugs.add(slug);
+                    console.log(`JS模式${index + 1}找到游戏slug: ${slug}`);
+                }
+            }
+        });
+        
+        // 将找到的slugs转换为游戏URL
+        foundGameSlugs.forEach(slug => {
+            const gameUrl = `https://www.crazygames.com/game/${slug}`;
+            if (!gameLinks.includes(gameUrl)) {
+                gameLinks.push(gameUrl);
+                console.log(`从JS数据添加游戏: ${gameUrl}`);
+            }
+        });
+        
+        // 专门查找页面中提到的游戏名称并构造URL
+        console.log('查找页面中的游戏名称...');
+        const gameNamePatterns = [
+            // 查找所有可能的游戏名称（连字符分隔的词）
+            /\b([a-z]+(?:-[a-z0-9]+){1,4})\b/g,
+            // 查找引号中的游戏名称
+            /["']([a-z]+(?:-[a-z0-9]+)+)["']/g,
+            // 查找数据属性中的游戏名称
+            /data-[\w-]*="([a-z]+(?:-[a-z0-9]+)+)"/g
+        ];
+        
+        const potentialGameNames = new Set();
+        gameNamePatterns.forEach(pattern => {
+            let match;
+            while ((match = pattern.exec(html)) !== null) {
+                const name = match[1];
+                if (name && name.length > 5 && name.split('-').length >= 2) {
+                    potentialGameNames.add(name);
+                }
+            }
+        });
+        
+        // 验证这些名称是否真的是游戏
+        const knownGameKeywords = ['game', 'play', 'adventure', 'action', 'puzzle', 'strategy', 'arcade', 'shooter', 'racing', 'sports'];
+        potentialGameNames.forEach(name => {
+            // 检查游戏名称周围的上下文
+            const nameRegex = new RegExp(`\\b${name}\\b`, 'gi');
+            const matches = html.match(nameRegex);
+            if (matches && matches.length >= 2) {  // 至少出现2次
+                // 检查上下文是否包含游戏相关词汇
+                const contextRegex = new RegExp(`(.{0,100}\\b${name}\\b.{0,100})`, 'gi');
+                const contexts = html.match(contextRegex) || [];
+                
+                const hasGameContext = contexts.some(context => 
+                    knownGameKeywords.some(keyword => 
+                        context.toLowerCase().includes(keyword)
+                    )
+                );
+                
+                if (hasGameContext) {
+                    const gameUrl = `https://www.crazygames.com/game/${name}`;
+                    if (!gameLinks.includes(gameUrl)) {
+                        gameLinks.push(gameUrl);
+                        console.log(`从上下文推断添加游戏: ${gameUrl}`);
+                    }
+                }
+            }
+        });
+        
+        // 专门处理已知遗漏的游戏
+        const knownMissingGames = ['cursed-treasure-2', 'fortzone-battle-royale', 'stickman-clash'];
+        knownMissingGames.forEach(gameName => {
+            if (html.includes(gameName)) {
+                const specificUrl = `https://www.crazygames.com/game/${gameName}`;
+                if (!gameLinks.includes(specificUrl)) {
+                    gameLinks.push(specificUrl);
+                    console.log(`手动添加已知游戏: ${specificUrl}`);
+                }
+            }
+        });
         
         console.log(`总共找到 ${gameLinks.length} 个有效游戏链接`);
         
@@ -399,14 +626,78 @@ async function getGameLinksFromUrl(sourceUrl = 'https://www.crazygames.com/') {
             }
         }
         
+        // 如果仍然链接不足且是分类页面，尝试模拟滚动加载更多内容
+        if (gameLinks.length < 20 && (sourceUrl.includes('/c/') || sourceUrl.includes('/t/'))) {
+            console.log('分类页面链接不足，尝试查找加载更多的API...');
+            
+            // 尝试查找可能的AJAX API端点
+            const scripts = doc.querySelectorAll('script');
+            for (const script of scripts) {
+                const content = script.textContent || script.innerHTML;
+                if (content && (content.includes('api') || content.includes('load') || content.includes('games'))) {
+                    // 查找可能的API URL
+                    const apiMatches = content.match(/["']([^"']*api[^"']*games[^"']*)["']/g);
+                    if (apiMatches) {
+                        console.log('找到可能的API端点:', apiMatches);
+                    }
+                }
+            }
+            
+            // 尝试构造可能的API URL
+            const categoryName = sourceUrl.split('/').pop();
+            const possibleApiUrls = [
+                `https://www.crazygames.com/api/games?category=${categoryName}`,
+                `https://www.crazygames.com/api/v1/games?category=${categoryName}`,
+                `https://api.crazygames.com/games?category=${categoryName}`,
+                `https://www.crazygames.com/games.json?category=${categoryName}`
+            ];
+            
+            for (const apiUrl of possibleApiUrls) {
+                try {
+                    console.log(`尝试API: ${apiUrl}`);
+                    const apiResponse = await fetch(`${PROXY_URL}${encodeURIComponent(apiUrl)}`);
+                    if (apiResponse.ok) {
+                        const apiData = await apiResponse.json();
+                        console.log('API响应成功，数据长度:', JSON.stringify(apiData).length);
+                        
+                        // 尝试从API数据中提取游戏链接
+                        if (apiData.games && Array.isArray(apiData.games)) {
+                            apiData.games.forEach(game => {
+                                if (game.slug || game.id) {
+                                    const gameUrl = `https://www.crazygames.com/game/${game.slug || game.id}`;
+                                    if (!gameLinks.includes(gameUrl)) {
+                                        gameLinks.push(gameUrl);
+                                        console.log(`API添加游戏链接: ${gameUrl}`);
+                                    }
+                                }
+                            });
+                        }
+                        break;
+                    }
+                } catch (error) {
+                    console.log(`API尝试失败: ${apiUrl}`, error.message);
+                }
+            }
+        }
+        
         console.log(`最终找到 ${gameLinks.length} 个游戏链接`);
         
         // 打印前几个链接作为示例
-        gameLinks.slice(0, 5).forEach((link, index) => {
+        gameLinks.slice(0, 10).forEach((link, index) => {
             console.log(`示例链接 ${index + 1}: ${link}`);
         });
         
-        return gameLinks.slice(0, 40); // 返回前40个，确保有足够的候选
+        // 移除重复和无效链接
+        const uniqueLinks = Array.from(new Set(gameLinks)).filter(link => {
+            return link && 
+                   link.startsWith('https://www.crazygames.com/game/') && 
+                   !link.includes('undefined') && 
+                   !link.includes('null');
+        });
+        
+        console.log(`去重后有效链接数量: ${uniqueLinks.length}`);
+        
+        return uniqueLinks.slice(0, 100); // 返回前100个，确保抓取到所有游戏
     } catch (error) {
         console.error('获取首页游戏链接失败:', error);
         throw error;

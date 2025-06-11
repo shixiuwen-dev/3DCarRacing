@@ -314,7 +314,7 @@ async function getAllGames() {
         const gamesRef = collection(db, 'games');
         const gamesQuery = query(gamesRef, 
             orderBy('createdAt', 'desc'), 
-            limit(12)
+            limit(20)
         );
         
         const snapshot = await getDocs(gamesQuery);
@@ -365,7 +365,7 @@ window.loadMoreGames = async function() {
         const moreGamesQuery = query(gamesRef, 
             orderBy('createdAt', 'desc'),
             startAfter(lastLoadedDoc),
-            limit(12)
+            limit(20)
         );
         
         const moreSnapshot = await getDocs(moreGamesQuery);
@@ -397,7 +397,7 @@ window.loadMoreGames = async function() {
         }
 
         // 如果返回的游戏数量小于限制数量，说明没有更多了
-        if (moreGames.length < 12) {
+        if (moreGames.length < 20) {
             loadMoreButton.textContent = '暂无更多游戏';
             loadMoreButton.disabled = true;
         } else {
@@ -458,8 +458,8 @@ async function showHomePage() {
         const totalGamesCount = await getTotalGamesCount();
         console.log('Total games in database:', totalGamesCount);
         console.log('Total games type:', typeof totalGamesCount);
-        console.log('Should show Load More button?', totalGamesCount > 12);
-        console.log('Comparison result:', totalGamesCount, '>', 12, '=', totalGamesCount > 12);
+        console.log('Should show Load More button?', totalGamesCount > 20);
+        console.log('Comparison result:', totalGamesCount, '>', 20, '=', totalGamesCount > 20);
         
         // 如果没有游戏数据，提示用户初始化数据
         if (!allGames || allGames.length === 0) {
@@ -469,12 +469,16 @@ async function showHomePage() {
         // 检查是否有热门游戏
         const hasPopularGames = popularGames && popularGames.length > 0;
         console.log('Has popular games:', hasPopularGames);
+        
+        // 获取最近玩过的游戏
+        const recentlyPlayedGames = await getRecentlyPlayedGames();
+        console.log('Recently played games loaded:', recentlyPlayedGames.length, 'games');
     
         mainContent.innerHTML = `
             <div class="container mx-auto px-4 py-8">
                 <section id="new-games" class="mb-12">
                     <h2 class="text-2xl font-bold mb-6">New Games</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 min-h-[320px]">
+                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 min-h-[320px]">
                         ${newGames && newGames.length > 0 ? 
                             newGames.map(game => createGameCard(game)).join('') : 
                             '<div class="col-span-full text-center py-12"><p class="text-gray-400">No new games available at the moment. Check back later!</p></div>'
@@ -485,7 +489,7 @@ async function showHomePage() {
                 ${hasPopularGames ? `
                     <section id="popular" class="mb-12">
                         <h2 class="text-2xl font-bold mb-6">Popular Games</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 min-h-[320px]">
+                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 min-h-[320px]">
                             ${popularGames && popularGames.length > 0 ? 
                                 popularGames.map(game => createGameCard(game)).join('') : 
                                 '<div class="col-span-full text-center py-12"><p class="text-gray-400">No popular games available at the moment.</p></div>'
@@ -494,19 +498,25 @@ async function showHomePage() {
                     </section>
                 ` : ''}
 
-
+                <!-- Recently Played Games Section -->
+                <section id="recently-played" class="mb-12" style="display: none;">
+                    <h2 class="text-2xl font-bold mb-6">Recently Played</h2>
+                    <div id="recently-played-grid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 min-h-[320px]">
+                        <!-- Games will be loaded dynamically -->
+                    </div>
+                </section>
 
                 <section id="all-games" class="mb-12">
                     <h2 class="text-2xl font-bold mb-6">All Games (${totalGamesCount})</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 min-h-[320px] h-auto">
+                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 min-h-[320px] h-auto">
                         ${allGames && allGames.length > 0 ? 
                             allGames.map(game => createGameCard(game)).join('') : 
                             '<div class="col-span-full text-center py-12"><p class="text-gray-400 mb-4">暂无游戏数据</p><a href="/init-data.html" class="bg-gaming-primary hover:bg-gaming-primary/80 px-4 py-2 rounded-lg transition">初始化示例数据</a></div>'
                         }
                     </div>
-                    ${totalGamesCount > 12 ? `
+                    ${totalGamesCount > 20 ? `
                         <div class="text-center mt-8">
-                            <button onclick="loadMoreGames()" class="px-6 py-3 bg-gaming-primary hover:bg-gaming-primary/80 rounded-lg transition">
+                            <button onclick="loadMoreGames()" class="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">
                                 Load More Games
                             </button>
                         </div>
@@ -518,6 +528,11 @@ async function showHomePage() {
                 </section>
             </div>
         `;
+        
+        // 在DOM渲染完成后，显示最近玩过的游戏
+        setTimeout(() => {
+            displayRecentlyPlayedGames(recentlyPlayedGames);
+        }, 100);
     } catch (error) {
         console.error('Error loading home page:', error);
         console.error('Error stack:', error.stack);
@@ -601,7 +616,7 @@ async function getNewGames() {
     const result = await getGames({
         orderBy: 'createdAt',
         orderDirection: 'desc',
-        limit: 4
+        limit: 5
     });
     return result.games;
 }
@@ -610,11 +625,11 @@ async function getNewGames() {
 async function getPopularGames() {
     try {
         console.log('Getting popular games...');
-        // 直接获取播放次数最多的4个游戏
+        // 直接获取播放次数最多的5个游戏
         const result = await getGames({
             orderBy: 'plays',
             orderDirection: 'desc',
-            limit: 4
+            limit: 5
         });
         console.log('Popular games loaded:', result.games.length, 'games');
         return result.games;
@@ -629,7 +644,7 @@ async function getSimilarGames(category, excludeId) {
     try {
         const result = await getGames({
             category: category,
-            limit: 4
+            limit: 5
         });
         return result.games.filter(game => game.id !== excludeId);
     } catch (error) {
@@ -698,12 +713,12 @@ async function showCategoryPage(category) {
             loading: false
         };
         
-        // 使用通用的 getGames 函数获取数据，限制为12个
+        // 使用通用的 getGames 函数获取数据，限制为20个
         const result = await getGames({
             category: normalizedCategory,
             orderBy: 'createdAt',
             orderDirection: 'desc',
-            limit: 12
+            limit: 20
         });
         
         const games = result.games;
@@ -712,7 +727,7 @@ async function showCategoryPage(category) {
         // 更新分页状态，使用Firebase文档对象
         if (result.snapshot.docs.length > 0) {
             categoryPaginationState.lastDoc = result.snapshot.docs[result.snapshot.docs.length - 1];
-            categoryPaginationState.hasMore = games.length === 12;
+            categoryPaginationState.hasMore = games.length === 20;
         } else {
             categoryPaginationState.hasMore = false;
         }
@@ -724,9 +739,9 @@ async function showCategoryPage(category) {
                 return;
             }
             mainContent.innerHTML = `
-                <section class="relative rounded-2xl overflow-hidden mb-12 bg-gaming-primary/10 p-8">
-                    <h1 class="text-4xl md:text-5xl font-bold mb-4">${category} Games</h1>
-                    <p class="text-xl text-gray-300 max-w-2xl">Explore our collection of amazing ${category.toLowerCase()} games!</p>
+                <section class="relative rounded-2xl overflow-hidden mb-8 bg-gaming-primary/10 p-6">
+                    <h1 class="text-2xl md:text-3xl font-bold mb-2">${category} Games</h1>
+                    <p class="text-base text-gray-300 max-w-2xl">Explore our collection of amazing ${category.toLowerCase()} games!</p>
                 </section>
                 <section class="text-center py-12">
                     <h2 class="text-2xl font-bold mb-4">No games found in ${category} category</h2>
@@ -743,18 +758,18 @@ async function showCategoryPage(category) {
             return;
         }
         mainContent2.innerHTML = `
-            <section class="relative rounded-2xl overflow-hidden mb-12 bg-gaming-primary/10 p-8">
-                <h1 class="text-4xl md:text-5xl font-bold mb-4">${category} Games</h1>
-                <p class="text-xl text-gray-300 max-w-2xl">Explore our collection of amazing ${category.toLowerCase()} games!</p>
+            <section class="relative rounded-2xl overflow-hidden mb-8 bg-gaming-primary/10 p-6">
+                <h1 class="text-2xl md:text-3xl font-bold mb-2">${category} Games</h1>
+                <p class="text-base text-gray-300 max-w-2xl">Explore our collection of amazing ${category.toLowerCase()} games!</p>
             </section>
             
             <section class="mb-12">
-                <div id="category-games-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div id="category-games-grid" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     ${games.map(game => createGameCard(game)).join('')}
                 </div>
                 ${categoryPaginationState.hasMore ? `
                     <div class="text-center mt-8">
-                        <button id="load-more-category-btn" onclick="loadMoreCategoryGames()" class="px-6 py-3 bg-gaming-primary hover:bg-gaming-primary/80 rounded-lg transition">
+                        <button id="load-more-category-btn" onclick="loadMoreCategoryGames()" class="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">
                             Load More Games
                         </button>
                     </div>
@@ -773,9 +788,9 @@ async function showCategoryPage(category) {
             return;
         }
         mainContent.innerHTML = `
-            <section class="relative rounded-2xl overflow-hidden mb-12 bg-gaming-primary/10 p-8">
-                <h1 class="text-4xl md:text-5xl font-bold mb-4">${category} Games</h1>
-                <p class="text-xl text-gray-300 max-w-2xl">Explore our collection of amazing ${category.toLowerCase()} games!</p>
+            <section class="relative rounded-2xl overflow-hidden mb-8 bg-gaming-primary/10 p-6">
+                <h1 class="text-2xl md:text-3xl font-bold mb-2">${category} Games</h1>
+                <p class="text-base text-gray-300 max-w-2xl">Explore our collection of amazing ${category.toLowerCase()} games!</p>
             </section>
             <section class="text-center py-12">
                 <h2 class="text-2xl font-bold mb-4">Error loading games</h2>
@@ -807,7 +822,7 @@ async function loadMoreCategoryGames() {
             category: categoryPaginationState.currentCategory,
             orderBy: 'createdAt',
             orderDirection: 'desc',
-            limit: 12,
+            limit: 20,
             lastDoc: categoryPaginationState.lastDoc
         });
 
@@ -817,7 +832,7 @@ async function loadMoreCategoryGames() {
         if (moreGames.length > 0) {
             // 更新分页状态，使用Firebase文档对象
             categoryPaginationState.lastDoc = result.snapshot.docs[result.snapshot.docs.length - 1];
-            categoryPaginationState.hasMore = moreGames.length === 12;
+            categoryPaginationState.hasMore = moreGames.length === 20;
 
             // 添加新游戏到网格
             const gamesGrid = document.getElementById('category-games-grid');
@@ -882,6 +897,9 @@ async function showGamePage(gameSlug) {
         const game = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
         console.log('Game data:', game);
         
+        // 添加游戏到最近玩过列表
+        addToRecentlyPlayed(game);
+        
         if (!game.embedUrl) {
             console.error('Game embedUrl is missing');
             showErrorPage('Game is currently unavailable');
@@ -945,7 +963,7 @@ async function showGamePage(gameSlug) {
                 ${similarGames.length > 0 ? `
                     <div class="mt-12">
                         <h2 class="text-2xl font-bold mb-6">Similar Games</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                             ${similarGames.map(game => createGameCard(game)).join('')}
                         </div>
                     </div>
@@ -995,8 +1013,8 @@ function createLoadingTemplate() {
             <!-- Games Grid Skeleton -->
             <div class="mb-12">
                 <div class="h-8 bg-gray-700 rounded mb-6 w-48"></div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    ${Array(8).fill(0).map(() => `
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    ${Array(10).fill(0).map(() => `
                         <div class="bg-black/30 rounded-xl overflow-hidden animate-pulse">
                             <div class="w-full bg-gray-700" style="height: 200px;"></div>
                             <div class="p-4">
@@ -1057,8 +1075,8 @@ function createGameLoadingTemplate() {
             <!-- Similar games skeleton -->
             <div class="mt-12">
                 <div class="h-8 bg-gray-700 rounded w-48 mb-6"></div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    ${Array(4).fill(0).map(() => `
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    ${Array(5).fill(0).map(() => `
                         <div class="bg-black/30 rounded-xl overflow-hidden">
                             <div class="w-full bg-gray-700" style="height: 200px;"></div>
                             <div class="p-4">
@@ -1090,6 +1108,103 @@ function formatPlays(plays) {
     return plays.toString();
 }
 
+// 本地存储管理最近玩过的游戏
+function addToRecentlyPlayed(game) {
+    try {
+        const STORAGE_KEY = 'recentlyPlayedGames';
+        const MAX_GAMES = 10; // 最多保存10个游戏（两行）
+        
+        let recentGames = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        
+        // 移除已存在的相同游戏
+        recentGames = recentGames.filter(g => g.id !== game.id);
+        
+        // 添加到开头
+        recentGames.unshift({
+            id: game.id,
+            title: game.title,
+            slug: game.slug,
+            thumbnail: game.thumbnail,
+            coverImage: game.coverImage,
+            category: game.category,
+            description: game.description,
+            plays: game.plays,
+            playedAt: new Date().toISOString()
+        });
+        
+        // 限制数量
+        if (recentGames.length > MAX_GAMES) {
+            recentGames = recentGames.slice(0, MAX_GAMES);
+        }
+        
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(recentGames));
+        console.log('Added game to recently played:', game.title);
+    } catch (error) {
+        console.error('Error adding to recently played:', error);
+    }
+}
+
+// 获取最近玩过的游戏
+async function getRecentlyPlayedGames() {
+    try {
+        const STORAGE_KEY = 'recentlyPlayedGames';
+        const recentGames = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+        
+        // 如果没有最近玩过的游戏，返回空数组
+        if (recentGames.length === 0) {
+            return [];
+        }
+        
+        // 验证游戏是否仍然存在于数据库中
+        const validGames = [];
+        for (const game of recentGames) {
+            try {
+                const gameQuery = query(
+                    collection(db, 'games'),
+                    where('slug', '==', game.slug)
+                );
+                const snapshot = await getDocs(gameQuery);
+                if (!snapshot.empty) {
+                    // 使用数据库中的最新数据
+                    const dbGame = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+                    validGames.push(dbGame);
+                }
+            } catch (error) {
+                console.error('Error verifying game:', game.slug, error);
+                // 如果数据库查询失败，使用本地存储的数据
+                validGames.push(game);
+            }
+        }
+        
+        return validGames.slice(0, 10); // 最多返回10个
+    } catch (error) {
+        console.error('Error getting recently played games:', error);
+        return [];
+    }
+}
+
+// 显示最近玩过的游戏
+function displayRecentlyPlayedGames(games) {
+    const section = document.getElementById('recently-played');
+    const grid = document.getElementById('recently-played-grid');
+    
+    if (!section || !grid) {
+        console.error('Recently played section not found');
+        return;
+    }
+    
+    if (games.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    // 显示区域
+    section.style.display = 'block';
+    
+    // 渲染游戏卡片
+    grid.innerHTML = games.map(game => createGameCard(game)).join('');
+}
+
 // incrementPlays函数已在index.html中定义为全局函数
 
 // 创建游戏卡片
@@ -1099,28 +1214,57 @@ function createGameCard(game) {
     console.log('Game cover image:', game.coverImage);
     
     return `
-        <div class="game-card bg-black/30 rounded-xl overflow-hidden group flex flex-col">
-            <div class="relative w-full bg-black/50" style="height: 200px; min-height: 200px;">
+        <div class="game-card bg-black/30 rounded-lg overflow-hidden group flex flex-col cursor-pointer hover:bg-black/40 transition-all duration-300" 
+             onclick="navigateToGame('${game.slug}', '${game.id}')">
+            <div class="relative w-full bg-black/50" style="height: 160px; min-height: 160px;">
                 <div class="absolute inset-0 flex items-center justify-center">
-                    <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gaming-primary image-loading"></div>
+                    <div class="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-gaming-primary image-loading"></div>
                 </div>
                 <img src="${game.thumbnail || game.coverImage || '/assets/game-placeholder.svg'}" 
                      alt="${game.title}" 
-                     class="absolute inset-0 w-full h-full object-cover transform group-hover:scale-110 transition duration-300"
+                     class="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition duration-300"
                      onload="this.parentElement.querySelector('.image-loading').style.display='none'"
                      onerror="this.src='/assets/game-placeholder.svg'">
+                ${game.hoverAnimation ? `
+                    <img src="${game.hoverAnimation}" 
+                         alt="${game.title} animation" 
+                         class="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                         style="z-index: 1;">
+                ` : ''}
             </div>
-            <div class="p-4 flex flex-col flex-grow">
-                <div class="flex items-center justify-between mb-2">
-                    <h3 class="text-lg font-bold line-clamp-1">${game.title}</h3>
-                    <span class="px-2 py-1 bg-gaming-primary/20 rounded text-sm flex-shrink-0 ml-2">${game.category}</span>
+            <div class="p-3 flex flex-col flex-grow">
+                <div class="flex items-start justify-between mb-1">
+                    <h3 class="text-sm font-bold line-clamp-1 pr-2" style="display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden;">${game.title}</h3>
+                    <span class="px-1.5 py-0.5 bg-gaming-primary/20 rounded text-xs flex-shrink-0">${game.category}</span>
                 </div>
-                <p class="text-sm text-gray-300 mt-1 line-clamp-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${game.description}</p>
-                                                        <div class="flex items-center justify-between mt-auto pt-4">
-                                            <span class="text-sm text-gray-400">${game.plays || 0} plays</span>
-                                            <a href="/games/${game.slug}" data-route class="bg-gaming-primary hover:bg-gaming-primary/80 px-4 py-2 rounded-lg transition" onclick="incrementPlays('${game.id}')">Play</a>
-                                        </div>
+                <p class="text-xs text-gray-300 mt-1 line-clamp-2 flex-grow" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${game.description}</p>
+                <div class="flex items-center justify-between mt-3 pt-2 border-t border-gray-700">
+                    <span class="text-xs text-gray-400">${formatPlays(game.plays || 0)} plays</span>
+                    <div class="bg-gaming-primary hover:bg-gaming-primary/80 px-3 py-1 rounded text-xs transition pointer-events-none">
+                        Play
+                    </div>
+                </div>
             </div>
         </div>
     `;
-} 
+}
+
+// 导航到游戏页面的函数
+function navigateToGame(gameSlug, gameId) {
+    try {
+        // 增加游戏播放次数
+        if (typeof incrementPlays === 'function') {
+            incrementPlays(gameId);
+        }
+        // 使用路由导航
+        history.pushState(null, '', `/games/${gameSlug}`);
+        handleRoute();
+    } catch (error) {
+        console.error('Error navigating to game:', error);
+        // 降级到直接页面跳转
+        window.location.href = `/games/${gameSlug}`;
+    }
+}
+
+// 将函数添加到全局作用域
+window.navigateToGame = navigateToGame;
