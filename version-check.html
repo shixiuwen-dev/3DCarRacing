@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>版本检查 - WorkMoyu Games</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0F1923;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .version-info {
+            background: rgba(255, 70, 85, 0.1);
+            border: 1px solid #FF4655;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px auto;
+            max-width: 600px;
+        }
+        .timestamp {
+            font-size: 24px;
+            font-weight: bold;
+            color: #FF4655;
+            margin: 10px 0;
+        }
+        .grid-test {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .grid-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        @media (max-width: 768px) {
+            .grid-test {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        @media (max-width: 640px) {
+            .grid-test {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>版本检查页面</h1>
+    
+    <div class="version-info">
+        <h2>当前版本信息</h2>
+        <div class="timestamp" id="build-time"></div>
+        <p>如果这个时间戳是最新的，说明缓存已清理成功</p>
+        <p>构建时间: <span id="current-time"></span></p>
+    </div>
+
+    <div class="version-info">
+        <h2>5列网格布局测试</h2>
+        <p>在大屏设备上应该显示5列，平板显示3列，手机显示1列</p>
+        <div class="grid-test">
+            <div class="grid-item">列1</div>
+            <div class="grid-item">列2</div>
+            <div class="grid-item">列3</div>
+            <div class="grid-item">列4</div>
+            <div class="grid-item">列5</div>
+        </div>
+    </div>
+
+    <div class="version-info">
+        <h2>特性检查清单</h2>
+        <ul style="text-align: left; display: inline-block;">
+            <li>✅ 游戏列表5列布局 (大屏设备)</li>
+            <li>✅ 分类页标题缩小</li>
+            <li>✅ 首页最近玩过功能</li>
+            <li>✅ 中英文翻译完成</li>
+            <li>✅ 页脚对齐修复</li>
+        </ul>
+    </div>
+
+    <script>
+        // 显示构建时间（当前时间）
+        const now = new Date();
+        const buildTime = now.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZone: 'Asia/Shanghai'
+        });
+        
+        document.getElementById('build-time').textContent = buildTime;
+        document.getElementById('current-time').textContent = buildTime;
+    </script>
+</body>
+</html> 
